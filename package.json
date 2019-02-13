@@ -1,0 +1,7 @@
+{ "scripts": {
+  "test": "shadow-cljs compile test && node out/node-tests.js"
+},
+  "dependencies": {
+    "shadow-cljs": "^2.7.32"
+  }
+}

@@ -1,0 +1,14 @@
+;; shadow-cljs configuration
+{:source-paths
+ ["src/main"
+  "src/test"]
+
+ :dependencies
+ []
+
+ :builds
+ {:test
+  {:target    :node-test
+   :output-to "out/node-tests.js"
+   :ns-regexp "-tests$"
+   :autorun   true}}}
