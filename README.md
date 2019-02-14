@@ -112,6 +112,12 @@ they are suitable for threading.
 #=> 10
 ```
 
+## Comparison to alternatives
+
+This [gist on Maria](https://www.maria.cloud/gist/7d3bb05390dce04a1bac9fda94ab0b92) shows
+examples of code you might write using `goog.object` and host interop syntax to achieve equivalent
+ semantics.
+
 ## Tests
 
 To run the tests:
