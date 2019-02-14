@@ -31,15 +31,27 @@
   ([o k not-found]
    (j/get o k not-found)))
 
+(defn ^:private get-in-softly
+  "INTERNAL, looks up `key-arr` in `obj`, stopping at any `nil` value"
+  [obj ^js/Array key-arr]
+  (let [end (.-length key-arr)]
+    (loop [i 0
+           obj obj]
+      (if (or (= i end)
+              (nil? obj))
+        obj
+        (recur (inc i)
+               (gobj/get obj (aget key-arr i)))))))
+
 (defn get-in*
-  "Internal library use only. Mutates `key-arr`."
+  "INTERNAL, mutates `key-arr`"
   ([obj ^js/Array key-arr]
    (when obj
-     (gobj/getValueByKeys obj key-arr)))
+     (get-in-softly obj key-arr)))
   ([obj ^js/Array key-arr not-found]
    (let [last-k (.pop key-arr)]
      (if-some [last-obj (when obj
-                          (gobj/getValueByKeys obj key-arr))]
+                          (get-in-softly obj key-arr))]
        (gobj/get last-obj last-k not-found)
        not-found))))
 

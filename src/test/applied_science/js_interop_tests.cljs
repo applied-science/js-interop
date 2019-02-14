@@ -34,9 +34,14 @@
       nil
 
 
-      ;; get-in
+      ;; get-in, nil root
       (j/get-in nil [:x])
       (apply j/get-in [nil [:x]])
+      nil
+
+      ;; get-in, nil nested
+      (j/get-in #js {:x nil} [:x :y])
+      (apply j/get-in [#js {:x nil} [:x :y]])
       nil
 
       ;; get-in with default
