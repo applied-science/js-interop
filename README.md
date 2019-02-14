@@ -28,7 +28,7 @@ handling of ClojureScript itself is constantly improving, as is externs handling
 build tool [shadow-cljs](https://shadow-cljs.github.io/docs/UsersGuide.html#infer-externs), but this is still
 a source of bugs and does not cover all cases.
 
-The officially recommended approach is to use functions in the `goog.object` namespace such
+The recommended approach is to use functions in the `goog.object` namespace such
 as `goog.object/get`, `goog.object/getValueByKeys`, and `goog.object/set`. These functions are
 performant and useful but they do not offer a Clojure-centric api. Keys need to be passed in as strings,
 and return values are not what we expect in Clojure.
