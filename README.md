@@ -15,7 +15,7 @@ This library is **alpha** and is currently only available as a git dep in `deps.
 ```clj
 :deps
 {applied-science/js-interop {:git/url "https://github.com/appliedsciencestudio/js-interop"
-                             :sha "5747ebd4f13ae1dec2b9e658477d797652f690ba"}}
+                             :sha "2f874f9c3df202265008d56214d7a7263bd5e798"}}
 ```
 
 ## Motivation
