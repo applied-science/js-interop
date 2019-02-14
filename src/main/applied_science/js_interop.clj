@@ -1,6 +1,5 @@
 (ns applied-science.js-interop
-  (:refer-clojure :exclude [get get-in assoc! contains? set!])
-  (:require [clojure.core :as core]))
+  (:refer-clojure :exclude [get get-in assoc! contains? unchecked-get unchecked-set]))
 
 (defn wrap-key
   "Convert key to string at compile time when possible."
