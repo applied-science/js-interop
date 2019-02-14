@@ -31,15 +31,15 @@ a source of bugs and does not cover all cases.
 The recommended approach is to use functions in the `goog.object` namespace such
 as `goog.object/get`, `goog.object/getValueByKeys`, and `goog.object/set`. These functions are
 performant and useful but they do not offer a Clojure-centric api. Keys need to be passed in as strings,
-and return values are not what we expect in Clojure.
+and return values from mutations are not amenable to threading.
 
 One library commonly recommended for JavaScript interop is [cljs-oops](https://github.com/binaryage/cljs-oops). This solves
-the renaming problem but the api is centered around strings, different from Clojure norms.
+the renaming problem and is highly performant, but the string-oriented api diverges far from Clojure norms.
 
-The functions in this library use `goog.object` under the hood, but usage should be familiar to
-anyone with Clojure experience. They are designed to work just like their Clojure equivalents,
+The functions in this library are designed to work just like their Clojure equivalents,
 but adapted to a JavaScript context. Keywords are converted to strings at compile-time when
-possible, paths are expressed as vectors.
+possible, paths are expressed as vectors. They defer to `goog.object` under the hood, but usage should be familiar to
+anyone with Clojure experience.
 
 ## Usage
 
@@ -105,8 +105,8 @@ they are suitable for threading.
 
 ```clj
 (-> #js {}
-    (j/assoc-in [:x :y] 9)
-    (j/update-in [:x :y) inc)
+    (j/assoc-in! [:x :y] 9)
+    (j/update-in! [:x :y) inc)
     (j/get-in [:x :y]))
 
 #=> 10
