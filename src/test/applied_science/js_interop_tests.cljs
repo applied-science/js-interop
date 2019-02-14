@@ -58,6 +58,11 @@
       (apply j/get-in [#js {:x #js {:y 10}} [:x :y]])
       10
 
+      ;; get-in multi-level
+      (j/get-in #js {} [:x :y])
+      (apply j/get-in [#js {} [:x :y]])
+      nil
+
       ;; get-in with nested not-present
       (j/get-in #js {:x #js {}} [:x :y])
       (apply j/get-in [#js {:x #js {}} [:x :y]])

@@ -19,6 +19,14 @@
     (mapv wrap-key path)
     `(mapv wrap-key ~path)))
 
+(defn wrap-keys-js [ks]
+  (if (vector? ks)
+    `(~'cljs.core/array ~@(mapv wrap-key ks))
+    `(->> ~ks
+          (reduce (fn [^js/Array out# k#]
+                    (doto out#
+                      (.push (~'applied-science.js-interop/wrap-key k#)))) (array)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Lookups
@@ -30,16 +38,10 @@
    `(~'goog.object/get ~o ~(wrap-key k) ~not-found)))
 
 (defmacro get-in
-  ([obj path]
-   `(get-in ~obj ~path nil))
+  ([obj ks]
+   `(~'applied-science.js-interop/get-in* ~obj ~(wrap-keys-js ks)))
   ([obj ks not-found]
-   `(let [obj# ~obj
-          ks# ~(wrap-path ks)
-          last-obj# (when obj#
-                      (~'.apply ~'goog.object/getValueByKeys nil
-                       (doto (to-array (butlast ks#))
-                         (.unshift obj#))))]
-      (~'goog.object/get last-obj# (last ks#) ~not-found))))
+   `(~'applied-science.js-interop/get-in* ~obj ~(wrap-keys-js ks) ~not-found)))
 
 (defn contains? [o k]
   `(~'goog.object/containsKey o ~(wrap-key k)))

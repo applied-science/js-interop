@@ -14,6 +14,12 @@
   (cond-> k
           (keyword? k) (name)))
 
+(defn wrap-keys-js
+  [ks]
+  (reduce (fn [^js out k]
+            (doto out
+              (.push (wrap-key k)))) #js [] ks))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Lookups
@@ -25,19 +31,26 @@
   ([o k not-found]
    (j/get o k not-found)))
 
+(defn get-in*
+  "Internal library use only. Mutates `key-arr`."
+  ([obj ^js/Array key-arr]
+   (when obj
+     (gobj/getValueByKeys obj key-arr)))
+  ([obj ^js/Array key-arr not-found]
+   (let [last-k (.pop key-arr)]
+     (if-some [last-obj (when obj
+                          (gobj/getValueByKeys obj key-arr))]
+       (gobj/get last-obj last-k not-found)
+       not-found))))
+
 (defn get-in
   "Returns the value in a nested object structure,
   where ks is a sequence of keys. Returns nil if the key is not present,
   or the not-found value if supplied."
   ([obj ks]
-   (get-in obj ks nil))
+   (get-in* obj (wrap-keys-js ks)))
   ([obj ks not-found]
-   (let [ks (mapv wrap-key ks)
-         last-obj (when obj
-                    (.apply gobj/getValueByKeys nil
-                            (doto (to-array (butlast ks))
-                              (.unshift obj))))]
-     (gobj/get last-obj (last ks) not-found))))
+   (get-in* obj (wrap-keys-js ks) not-found)))
 
 (deftype JSLookup [obj]
   ILookup
@@ -108,7 +121,7 @@
   (let [obj (or obj #js {})
         ks (mapv wrap-key ks)
         inner-obj (get-in+! obj (butlast ks))]
-    (gobj/set inner-obj (last ks) v)
+    (gobj/set inner-obj (peek ks) v)
     obj))
 
 (defn update!

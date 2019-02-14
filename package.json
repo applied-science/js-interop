@@ -1,7 +1,11 @@
-{ "scripts": {
-  "test": "shadow-cljs compile test && node out/node-tests.js"
-},
+{
+  "scripts": {
+    "test": "shadow-cljs compile test && node out/node-tests.js"
+  },
   "dependencies": {
     "shadow-cljs": "^2.7.32"
+  },
+  "devDependencies": {
+    "source-map-support": "^0.5.10"
   }
 }
