@@ -22,10 +22,7 @@
 (defn wrap-keys-js [ks]
   (if (vector? ks)
     `(~'cljs.core/array ~@(mapv wrap-key ks))
-    `(->> ~ks
-          (reduce (fn [^js/Array out# k#]
-                    (doto out#
-                      (.push (~'applied-science.js-interop/wrap-key k#)))) (array)))))
+    `(~'applied-science.js-interop/wrap-keys-js ~ks)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
