@@ -5,8 +5,11 @@
   "Functions for working with JavaScript that mirror Clojure behaviour."
   (:refer-clojure :exclude [get get-in assoc! assoc-in! update! update-in! select-keys contains? unchecked-get unchecked-set])
   (:require [goog.object :as gobj]
+            [goog.reflect]
             [cljs.core :as core])
   (:require-macros [applied-science.js-interop :as j]))
+
+(def ^:private _obj "Plain object used as parent for goog.reflect/objectProperty calls" #js{})
 
 (defn wrap-key
   "Returns `k` or, if it is a keyword, its name."
@@ -31,11 +34,11 @@
   ([o k not-found]
    (j/get o k not-found)))
 
-(defn ^:private get-in-softly
+(defn ^:private get-value-by-keys
   "INTERNAL, looks up `key-arr` in `obj`, stopping at any `nil` value"
   [obj ^js/Array key-arr]
   (let [end (.-length key-arr)]
-    (loop [i 0
+    (loop [^js/Number i 0
            obj obj]
       (if (or (= i end)
               (nil? obj))
@@ -47,11 +50,11 @@
   "INTERNAL, mutates `key-arr`"
   ([obj ^js/Array key-arr]
    (when obj
-     (get-in-softly obj key-arr)))
+     (get-value-by-keys obj key-arr)))
   ([obj ^js/Array key-arr not-found]
    (let [last-k (.pop key-arr)]
      (if-some [last-obj (when obj
-                          (get-in-softly obj key-arr))]
+                          (get-value-by-keys obj key-arr))]
        (gobj/get last-obj last-k not-found)
        not-found))))
 
@@ -123,7 +126,7 @@
                  (core/unchecked-set obj k inner-obj)
                  inner-obj))))))))
 
-(defn assoc-in!
+(defn assoc-in*
   "Mutates the value in a nested object structure, where ks is a
   sequence of keys and v is the new value. If any levels do not
   exist, objects will be created."
@@ -131,10 +134,16 @@
   (assert (> (count ks) 0)
           "assoc-in cannot accept an empty path")
   (let [obj (or obj #js {})
-        ks (mapv wrap-key ks)
         inner-obj (get-in+! obj (butlast ks))]
     (gobj/set inner-obj (peek ks) v)
     obj))
+
+(defn assoc-in!
+  "Mutates the value in a nested object structure, where ks is a
+  sequence of keys and v is the new value. If any levels do not
+  exist, objects will be created."
+  [obj ks v]
+  (assoc-in* obj (mapv wrap-key ks) v))
 
 (defn update!
   "'Updates' a value in a JavaScript object, where k is a key and
@@ -148,7 +157,7 @@
     (doto obj
       (gobj/set k (apply f (cons v args))))))
 
-(defn update-in!
+(defn update-in*
   "'Updates' a value in a nested object structure, where ks is a
   sequence of keys and f is a function that will take the old value
   and any supplied args and return the new value, mutating the
@@ -161,6 +170,15 @@
         ks (mapv wrap-key ks)
         val-at-path (.apply gobj/getValueByKeys nil (to-array (cons obj ks)))]
     (assoc-in! obj ks (apply f (cons val-at-path args)))))
+
+(defn update-in!
+  "'Updates' a value in a nested object structure, where ks is a
+  sequence of keys and f is a function that will take the old value
+  and any supplied args and return the new value, mutating the
+  nested structure.  If any levels do not exist, objects will be
+  created."
+  [obj ks f & args]
+  (apply update-in* obj (mapv wrap-key ks) f args))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;

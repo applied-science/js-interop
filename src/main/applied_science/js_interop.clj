@@ -1,5 +1,12 @@
 (ns applied-science.js-interop
-  (:refer-clojure :exclude [get get-in assoc! contains? unchecked-get unchecked-set]))
+  (:refer-clojure :exclude [get get-in assoc! contains? unchecked-get unchecked-set])
+  (:require [clojure.string :as str]))
+
+(def reflect-property 'js/goog.reflect.objectProperty)
+(def reflect-contains? 'js/goog.reflect.canAccessProperty)
+
+(defn dot-property-name [x]
+  (str/replace (name x) #"^\.-" ""))
 
 (defn wrap-key
   "Convert key to string at compile time when possible."
@@ -7,17 +14,17 @@
   (cond
     (string? k) k
     (keyword? k) (name k)
-    (symbol? k) (if (= (:tag (meta k)) "String")
-                  k
-                  `(wrap-key ~k))
+    (symbol? k) (cond (= (:tag (meta k)) "String") k
+                      (str/starts-with? (name k) ".-") `(~reflect-property ~(dot-property-name k) ~'applied-science.js-interop/_obj)
+                      :else `(wrap-key ~k))
     :else `(wrap-key ~k)))
 
-(defn wrap-path
+(defn wrap-keys-macro
   "Convert keys of path to strings at compile time where possible."
-  [path]
-  (if (vector? path)
-    (mapv wrap-key path)
-    `(mapv wrap-key ~path)))
+  [ks]
+  (if (vector? ks)
+    (mapv wrap-key ks)
+    `(mapv wrap-key ~ks)))
 
 (defn wrap-keys-js [ks]
   (if (vector? ks)
@@ -30,13 +37,13 @@
 
 (defmacro get
   ([o k]
-   `(get ~o ~k nil))
+   `(~'goog.object/get ~o ~(wrap-key k)))
   ([o k not-found]
    `(~'goog.object/get ~o ~(wrap-key k) ~not-found)))
 
 (defmacro get-in
   ([obj ks]
-   `(~'applied-science.js-interop/get-in* ~obj ~(wrap-keys-js ks)))
+   `(get-in ~obj ~ks nil))
   ([obj ks not-found]
    `(~'applied-science.js-interop/get-in* ~obj ~(wrap-keys-js ks) ~not-found)))
 
@@ -72,9 +79,11 @@
      (doto obj#
        (~'goog.object/set k# (~f v# ~@args)))))
 
-;; TODO
-;; - assoc-in!
-;; - update-in!
+(defmacro assoc-in! [obj ks v]
+  `(~'applied-science.js-interop/assoc-in* ~obj ~(wrap-keys-macro ks) ~v))
+
+(defmacro update-in! [obj ks f & args]
+  `(~'applied-science.js-interop/update-in* ~obj ~(wrap-keys-macro ks) ~f ~@args))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

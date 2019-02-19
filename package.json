@@ -3,7 +3,7 @@
     "test": "shadow-cljs compile test && node out/node-tests.js"
   },
   "dependencies": {
-    "shadow-cljs": "^2.7.32"
+    "shadow-cljs": "^2.8.2"
   },
   "devDependencies": {
     "source-map-support": "^0.5.10"

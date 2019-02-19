@@ -11,4 +11,11 @@
   {:target    :node-test
    :output-to "out/node-tests.js"
    :ns-regexp "-tests$"
-   :autorun   true}}}
+   :autorun   true}
+  :test-2
+  {:target    :node-test
+   :output-to "out/node-tests.js"
+   :ns-regexp "-tests$"
+   :autorun   true
+   :closure-defines {applied-science.js-interop-tests/advanced? true}
+   :compiler-options {:optimizations :advanced}}}}

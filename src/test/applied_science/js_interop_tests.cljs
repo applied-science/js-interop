@@ -6,6 +6,10 @@
                                         deftest]]
             [clojure.pprint :refer [pprint]]))
 
+(goog-define advanced? false)
+
+(def advanced= (if advanced? = not=))
+
 (defn clj= [& args]
   (->> args
        (mapv #(js->clj % :keywordize-keys true))
@@ -179,7 +183,47 @@
       (apply j/call [#js [10] :indexOf 10])
       0)
 
-    (is (thrown? js/Error
-                 (j/assoc-in! #js {} [] 10))
-        "Empty paths for mutations are not accepted,
-         JavaScript objects cannot have nil as a key")))
+    (when-not advanced?
+      (is (thrown? js/Error
+                   (j/assoc-in! #js {} [] 10))
+          "Empty paths for mutations are not accepted,
+           JavaScript objects cannot have nil as a key"))
+
+    (testing "Host interop keys"
+
+      (let [obj #js{}]
+        (set! (.-hostProperty obj) "x")
+
+        (is (= (.-hostProperty obj) "x"))
+        (is ((if advanced? not= =)
+             (j/get obj :hostProperty) "x")
+            "Unhinted object property is renamed under :advanced optimizations")
+        (is (= (j/get obj .-hostProperty)
+               "x")))
+
+      (when advanced?
+        (let [^js obj #js{}]
+          (set! (.-hostProperty2 obj) "x")
+          (is (= (j/get obj :hostProperty2) "x")
+              "^js hint prevents renaming")))
+
+      (let [obj #js{:x #js {:y "z"}}]
+
+        (is (= (j/get-in obj [:x :y] "z")))
+        (j/assoc-in! obj [:x :y] "zz")
+        (is (= (j/get-in obj [:x :y] "zz")))
+
+        (set! (.-aaaaa obj)
+              (doto #js {}
+                (-> .-bbbbb (set! "c"))))
+
+        (is (= (j/get-in obj [.-aaaaa .-bbbbb] "c")))
+
+        (j/assoc-in! obj [.-aaaaa .-bbbbb] "cc")
+        (is (= (j/get-in obj [.-aaaaa .-bbbbb] "cc")))
+
+        (j/assoc-in! obj [.-ddddd .-eeeee] "f")
+        (is (= (j/get-in obj [.-ddddd .-eeeee]) "f"))
+
+        (j/update-in! obj [.-ddddd .-eeeee] str "f")
+        (is (= (j/get-in obj [.-ddddd .-eeeee]) "ff"))))))
