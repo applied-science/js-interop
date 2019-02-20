@@ -4,7 +4,7 @@ A JavaScript interop library for ClojureScript.
 
 ## Features
 
-1. Operations that mirror behaviour of core Clojure functions like `get`, `assoc!`, etc.
+1. Operations that mirror behaviour of core Clojure functions like `get`, `get-in`, `assoc!`, etc.
 2. Keys are parsed at compile-time, and support both static keys (via keywords) and compiler-renamable forms (via dot-properties, eg `.-someAttribute`)
     
 ## Quick Example
