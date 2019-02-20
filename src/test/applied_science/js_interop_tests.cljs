@@ -4,7 +4,8 @@
                                         are
                                         testing
                                         deftest]]
-            [clojure.pprint :refer [pprint]]))
+            [clojure.pprint :refer [pprint]]
+            [goog.reflect :as reflect]))
 
 (goog-define advanced? false)
 
@@ -196,7 +197,7 @@
 
         (is (= (.-hostProperty obj) "x"))
         (is ((if advanced? not= =)
-             (j/get obj :hostProperty) "x")
+              (j/get obj :hostProperty) "x")
             "Unhinted object property is renamed under :advanced optimizations")
         (is (= (j/get obj .-hostProperty)
                "x")))
@@ -226,4 +227,28 @@
         (is (= (j/get-in obj [.-ddddd .-eeeee]) "f"))
 
         (j/update-in! obj [.-ddddd .-eeeee] str "f")
-        (is (= (j/get-in obj [.-ddddd .-eeeee]) "ff"))))))
+        (is (= (j/get-in obj [.-ddddd .-eeeee]) "ff")))
+
+      (deftype A [someProperty])
+      (deftype B [someProperty])
+      (deftype C [someProperty])
+
+      (let [a (new A "x")
+            b (new B "x")
+            c (new C "x")
+            d (doto #js{}
+                (-> .-someProperty (set! "x")))]
+
+        (is (= (reflect/objectProperty "someProperty" ^js a)
+               (reflect/objectProperty "someProperty" ^js b)
+               (reflect/objectProperty "someProperty" ^js c)
+               (reflect/objectProperty "someProperty" d))
+            "goog.reflect returns the same property key for different types")
+
+        (is (= (j/get a .-someProperty)
+               (j/get b .-someProperty)
+               (j/get c .-someProperty)
+               (j/get d .-someProperty))
+            "host-interop keys work across different types using the same keys"))
+
+      )))
