@@ -5,12 +5,29 @@ A JavaScript interop library for ClojureScript.
 ## Features
 
 1. Operations that mirror behaviour of core Clojure functions like `get`, `assoc!`, etc.
-    - Reading functions support lookup semantics (fallback to default values when keys are not present)
-    - Mutation functions are nil-friendly and return the original object, suitable for threading
-2. Keys are parsed at compile-time, and support both static and compiler-renamable forms
-    - Literal keywords are converted to strings, not subject to Closure Compiler renaming
-    - Dot-based host-interop syntax (eg `.-someKey`) is supported for keys that may be renamed by the compiler
-    - Other keys are passed through for evaluation at runtime, at which point keywords are coerced to strings and other values are left untouched
+2. Keys are parsed at compile-time, and support both static keys (via keywords) and compiler-renamable forms (via dot-properties, eg `.-someAttribute`)
+    
+## Quick Example
+
+```clj
+(ns my.app
+  (:require [applied-science.js-interop :as j]))
+
+(def o #js{ …some javascript object… })
+
+(j/get o :x)
+(j/get-in o [:x :y])
+(j/select-keys o [:a :b :c])
+
+(j/assoc! o :a 1)
+(j/assoc-in! o [:x :y] 100)
+
+(j/update! o :a inc)
+(j/update-in! o [:x :y] + 10)
+  
+(j/get o .-x)
+(j/assoc-in! o [.-x .-y] 100)
+```    
 
 ## Installation
 
@@ -41,30 +58,20 @@ One third-party library commonly recommended for JavaScript interop is [cljs-oop
 
 Neither library lets you choose to allow a given key to be renamed. For that, you must fall back to host-interop (dot) syntax, which has a different API, so the structure of your code may need to change based on unrelated compiler issues that only crop up when you thought development was finished.
 
-The functions in this library are designed to work just like their Clojure equivalents,
-but adapted to a JavaScript context. Static keys are expressed as keywords, renamable keys are expressed via host-interop syntax, nested paths are expressed as vectors. Usage should be familiar to anyone with Clojure experience.
-
-## Usage
-
-The following examples assume the library is aliased as `j`:
-
-```clj
-(ns my.app
-  (:require [applied-science.js-interop :as j]))
-```
-
+The functions in this library are designed to work just like their Clojure equivalents, but adapted to a JavaScript context. Static keys are expressed as keywords, renamable keys are expressed via host-interop syntax (eg. `.-someKey`), other keys are passed through for evaluation at runtime, at which point keywords are coerced to strings. Nested paths are expressed as vectors of keys. Mutation functions are nil-friendly and return the original object, suitable for threading. Usage should be familiar to anyone with Clojure experience.
+    
 ### Reading
 
-Reading functions include `get`, `get-in`, `select-keys`.
+Reading functions include `get`, `get-in`, `select-keys` and follow Clojure lookup syntax (fallback to default values only when keys are not present)
 
 ```clj
 (j/get obj :x)
 
-(j/get obj :x default) ;; `default` is returned if key `:x` is not present
+(j/get obj :x default-value) ;; `default-value` is returned if key `:x` is not present
 
 (j/get-in obj [:x :y])
 
-(j/get-in obj [:x :y] default)
+(j/get-in obj [:x :y] default-value)
 
 (j/select-keys obj [:x :z])
 ```
