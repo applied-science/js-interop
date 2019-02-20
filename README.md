@@ -42,7 +42,7 @@ This library is **alpha** and is currently only available as a git dep in `deps.
 ## Motivation
 
 ClojureScript does not have built-in functions for cleanly working with JavaScript
-objects without running into complexities related to Closure Compiler variable renaming.
+objects without running into complexities related to the Closure Compiler.
 The built-in host interop syntax (eg. `(.-theField obj)`) leaves keys subject to renaming,
 which is a common case of breakage when working with external libraries. The [externs](https://clojurescript.org/guides/externs)
 handling of ClojureScript itself is constantly improving, as is externs handling of the
@@ -52,13 +52,13 @@ a source of bugs and does not cover all cases.
 The recommended approach for JS interop when static keys are desired is to use functions in the `goog.object` namespace such
 as `goog.object/get`, `goog.object/getValueByKeys`, and `goog.object/set`. These functions are
 performant and useful but they do not offer a Clojure-centric api. Keys need to be passed in as strings,
-and return values from mutations are not amenable to threading. The `goog.object` namespace has had breaking changes introduced as recently as [2017](https://github.com/google/closure-library/releases/tag/v20170910). 
+and return values from mutations are not amenable to threading. The `goog.object` namespace has published breaking changes as recently as [2017](https://github.com/google/closure-library/releases/tag/v20170910). 
 
 One third-party library commonly recommended for JavaScript interop is [cljs-oops](https://github.com/binaryage/cljs-oops). This solves the renaming problem and is highly performant, but the string-oriented api diverges far from Clojure norms. 
 
-Neither library lets you choose to allow a given key to be renamed. For that, you must fall back to host-interop (dot) syntax, which has a different API, so the structure of your code may need to change based on unrelated compiler issues that only crop up when you thought development was finished.
+Neither library lets you choose to allow a given key to be renamed. For that, you must fall back to host-interop (dot) syntax, which has a different API, so the structure of your code may need to change based on unrelated compiler issues.
 
-The functions in this library are designed to work just like their Clojure equivalents, but adapted to a JavaScript context. Static keys are expressed as keywords, renamable keys are expressed via host-interop syntax (eg. `.-someKey`), other keys are passed through for evaluation at runtime, at which point keywords are coerced to strings. Nested paths are expressed as vectors of keys. Mutation functions are nil-friendly and return the original object, suitable for threading. Usage should be familiar to anyone with Clojure experience.
+The functions in this library work just like their Clojure equivalents, but adapted to a JavaScript context. Static keys are expressed as keywords, renamable keys are expressed via host-interop syntax (eg. `.-someKey`), nested paths are expressed as vectors of keys. Mutation functions are nil-friendly and return the original object, suitable for threading. Usage should be familiar to anyone with Clojure experience.
     
 ### Reading
 
