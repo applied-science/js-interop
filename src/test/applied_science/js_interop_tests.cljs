@@ -239,16 +239,17 @@
             d (doto #js{}
                 (-> .-someProperty (set! "x")))]
 
-        (is (= (reflect/objectProperty "someProperty" ^js a)
-               (reflect/objectProperty "someProperty" ^js b)
-               (reflect/objectProperty "someProperty" ^js c)
+        (is (= (reflect/objectProperty "someProperty" a)
+               (reflect/objectProperty "someProperty" b)
+               (reflect/objectProperty "someProperty" c)
                (reflect/objectProperty "someProperty" d))
             "goog.reflect returns the same property key for different types")
 
         (is (= (j/get a .-someProperty)
                (j/get b .-someProperty)
                (j/get c .-someProperty)
-               (j/get d .-someProperty))
+               (j/get d .-someProperty)
+               "x")
             "host-interop keys work across different types using the same keys"))
 
       )))
