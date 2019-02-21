@@ -3,13 +3,17 @@
 
 (ns applied-science.js-interop
   "Functions for working with JavaScript that mirror Clojure behaviour."
-  (:refer-clojure :exclude [get get-in assoc! assoc-in! update! update-in! select-keys contains? unchecked-get unchecked-set])
+  (:refer-clojure :exclude [get get-in assoc! assoc-in! update! update-in! select-keys contains? unchecked-get unchecked-set apply])
   (:require [goog.object :as gobj]
             [goog.reflect]
             [cljs.core :as core])
   (:require-macros [applied-science.js-interop :as j]))
 
 (def ^:private _obj "Plain object used as parent for goog.reflect/objectProperty calls" #js{})
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Key conversion
 
 (defn wrap-key
   "Returns `k` or, if it is a keyword, its name."
@@ -25,14 +29,25 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
+;; Unchecked operations
+
+(defn unchecked-set [obj k val]
+  (core/unchecked-set obj (wrap-key k) val)
+  obj)
+
+(defn unchecked-get [obj k]
+  (core/unchecked-get obj (wrap-key k)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;
 ;; Lookups
 
 (defn get
   "Returns the value mapped to key, not-found or nil if key not present."
-  ([o k]
-   (j/get o k))
-  ([o k not-found]
-   (j/get o k not-found)))
+  ([obj k]
+   (j/get obj k))
+  ([obj k not-found]
+   (j/get obj k not-found)))
 
 (defn ^:private get-value-by-keys
   "INTERNAL, looks up `key-arr` in `obj`, stopping at any `nil` value"
@@ -81,23 +96,23 @@
   [obj]
   (JSLookup. obj))
 
-(defn contains? [o k]
-  (gobj/containsKey o (wrap-key k)))
+(defn contains? [obj k]
+  (gobj/containsKey obj (wrap-key k)))
 
 (defn select-keys*
   "Returns an object containing only those entries in `o` whose key is in `ks`"
-  [o ks]
+  [obj ks]
   (reduce (fn [m k]
             (cond-> m
-                    (gobj/containsKey o k)
+                    (gobj/containsKey obj k)
                     (doto
                       (core/unchecked-set k
-                                          (gobj/get o k nil))))) #js {} ks))
+                                          (gobj/get obj k nil))))) #js {} ks))
 
 (defn select-keys
   "Returns an object containing only those entries in `o` whose key is in `ks`"
-  [o ks]
-  (select-keys* o (mapv wrap-key ks)))
+  [obj ks]
+  (select-keys* obj (mapv wrap-key ks)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -121,14 +136,14 @@
     (if (nil? ks)
       obj
       (recur
-       (next ks)
-       (or (let [k (first ks)
-                 inner-obj (get obj k)]
-             (if (some? inner-obj)
-               inner-obj
-               (let [inner-obj #js {}]
-                 (core/unchecked-set obj k inner-obj)
-                 inner-obj))))))))
+        (next ks)
+        (or (let [k (first ks)
+                  inner-obj (get obj k)]
+              (if (some? inner-obj)
+                inner-obj
+                (let [inner-obj #js {}]
+                  (core/unchecked-set obj k inner-obj)
+                  inner-obj))))))))
 
 (defn assoc-in*
   "Mutates the value in a nested object structure, where ks is a
@@ -159,7 +174,7 @@
         k (wrap-key k)
         v (gobj/get obj k)]
     (doto obj
-      (gobj/set k (apply f (cons v args))))))
+      (gobj/set k (core/apply f (cons v args))))))
 
 (defn update-in*
   "'Updates' a value in a nested object structure, where ks is a
@@ -173,7 +188,7 @@
   (let [obj (or obj #js {})
         ks (mapv wrap-key ks)
         val-at-path (.apply gobj/getValueByKeys nil (to-array (cons obj ks)))]
-    (assoc-in! obj ks (apply f (cons val-at-path args)))))
+    (assoc-in! obj ks (core/apply f (cons val-at-path args)))))
 
 (defn update-in!
   "'Updates' a value in a nested object structure, where ks is a
@@ -182,8 +197,7 @@
   nested structure.  If any levels do not exist, objects will be
   created."
   [obj ks f & args]
-  (apply update-in* obj (mapv wrap-key ks) f args))
-
+  (core/apply update-in* obj (mapv wrap-key ks) f args))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -201,16 +215,8 @@
 ;;
 ;; Function operations
 
-(defn call [^js o k & args]
-  (.apply (j/get o k) o (to-array args)))
+(defn call [obj k & args]
+  (.apply (j/get obj k) obj (to-array args)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;; Unchecked operations
-
-(defn unchecked-set [obj k val]
-  (core/unchecked-set obj (wrap-key k) val)
-  obj)
-
-(defn unchecked-get [o k]
-  (core/unchecked-get o (wrap-key k)))
+(defn apply [obj k arg-array]
+  (.apply (j/get obj k) obj arg-array))

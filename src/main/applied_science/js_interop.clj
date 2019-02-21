@@ -1,5 +1,5 @@
 (ns applied-science.js-interop
-  (:refer-clojure :exclude [get get-in contains? select-keys assoc! unchecked-get unchecked-set])
+  (:refer-clojure :exclude [get get-in contains? select-keys assoc! unchecked-get unchecked-set apply])
   (:require [clojure.string :as str]))
 
 (def reflect-property 'js/goog.reflect.objectProperty)
@@ -9,8 +9,25 @@
 (def gobj-set 'goog.object/set)
 (def gobj-contains? 'goog.object/containsKey)
 
-(defn dot-property-name [x]
-  (str/replace (name x) #"^\.-" ""))
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Host-key utils
+
+(defn- dot-field? [k]
+  (str/starts-with? (name k) ".-"))
+
+(defn- dot-sym? [k]
+  (str/starts-with? (name k) "."))
+
+(defn- dot-name [sym]
+  (str/replace (name sym) #"^\.\-?" ""))
+
+(defn- dot-get [sym]
+  (symbol (str ".-" (dot-name sym))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Key conversion
 
 (defn wrap-key
   "Convert key to string at compile time when possible."
@@ -20,7 +37,7 @@
      (string? k) k
      (keyword? k) (name k)
      (symbol? k) (cond (= (:tag (meta k)) "String") k
-                       (str/starts-with? (name k) ".-") `(~reflect-property ~(dot-property-name k) ~obj)
+                       (dot-sym? k) `(~reflect-property ~(dot-name k) ~obj)
                        :else `(wrap-key ~k))
      :else `(wrap-key ~k))))
 
@@ -36,15 +53,47 @@
     `(~'cljs.core/array ~@(mapv wrap-key ks))
     `(~'applied-science.js-interop/wrap-keys->array ~ks)))
 
-(defn wrapped-get
-  ([obj k]
-   (wrapped-get obj k nil))
-  ([obj k not-found]
-   `(~gobj-get ~obj ~(wrap-key k obj) ~not-found)))
+(defn- doto-pairs
+  "Expands to an expression which calls `f` on `o` with
+   successive pairs of arguments, returning `o`."
+  [obj f pairs]
+  (let [o (gensym "obj")]
+    `(let [~o ~obj]
+       (doto ~o
+         ~@(loop [pairs (partition 2 pairs)
+                  out []]
+             (if (empty? pairs)
+               out
+               (let [[k v] (first pairs)]
+                 (recur (rest pairs)
+                        (conj out (f (wrap-key k o) v))))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Unchecked operations
+
+(defmacro unchecked-get [obj k]
+  `(~'cljs.core/unchecked-get ~obj ~(wrap-key k)))
+
+(defmacro unchecked-set [obj & pairs]
+  (doto-pairs obj
+              (fn [k v]
+                `(~'cljs.core/unchecked-set ~k ~v)) pairs))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Lookups
+
+(defn- wrapped-get
+  ([obj k]
+   (wrapped-get obj k nil))
+  ([obj k not-found]
+   `(if (and (some? ~obj)
+             (~'cljs.core/js-in ~(wrap-key k obj) ~obj))
+      ~(if (dot-sym? k)
+         `(~(dot-get k) ~obj)
+         `(unchecked-get ~obj ~k))
+      ~not-found)))
 
 (defmacro get
   ([obj k]
@@ -78,23 +127,8 @@
 ;;
 ;; Mutations
 
-(defn ^:private doto-pairs
-  "Expands to an expression which calls `f` on `o` with
-   successive pairs of arguments, returning `o`."
-  [obj f pairs]
-  (let [o (gensym "obj")]
-    `(let [~o ~obj]
-       (doto ~o
-         ~@(loop [pairs (partition 2 pairs)
-                  out []]
-             (if (empty? pairs)
-               out
-               (let [[k v] (first pairs)]
-                 (recur (rest pairs)
-                        (conj out (f (wrap-key k o) v))))))))))
-
-(defmacro assoc! [o & pairs]
-  (doto-pairs `(or ~o (~'js-obj))
+(defmacro assoc! [obj & pairs]
+  (doto-pairs `(or ~obj (~'js-obj))
               (fn [k v]
                 `(~gobj-set ~k ~v)) pairs))
 
@@ -120,8 +154,8 @@
   `(doto ~a
      (~'.push ~v)))
 
-(defmacro unshift! [arr v]
-  `(doto ~arr
+(defmacro unshift! [a v]
+  `(doto ~a
      (~'.unshift ~v)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -130,17 +164,10 @@
 
 (defmacro call [obj k & args]
   `(let [obj# ~obj
-         ^js f# (get obj# ~k)]
-     (~'.call f# obj# ~@args)))
+         f# (get obj# ~k)]
+     (.call f# obj# ~@args)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;; Unchecked operations
-
-(defmacro unchecked-get [o k]
-  `(~'cljs.core/unchecked-get ~o ~(wrap-key k)))
-
-(defmacro unchecked-set [o & pairs]
-  (doto-pairs o
-              (fn [k v]
-                `(~'cljs.core/unchecked-set ~k ~v)) pairs))
+(defmacro apply [obj k args]
+  `(let [obj# ~obj
+         f# (get obj# ~k)]
+     (.apply f# obj# ~args)))

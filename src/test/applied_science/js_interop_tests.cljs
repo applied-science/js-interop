@@ -5,6 +5,7 @@
                                         testing
                                         deftest]]
             [clojure.pprint :refer [pprint]]
+            [goog.object :as gobj]
             [goog.reflect :as reflect]))
 
 (goog-define advanced? false)
@@ -182,6 +183,10 @@
 
     (j/call #js [10] :indexOf 10)
     (apply j/call [#js [10] :indexOf 10])
+    0
+
+    (j/apply #js[10] :indexOf #js[10])
+    (apply j/apply [#js [10] :indexOf #js[10]])
     0)
 
   (when-not advanced?
@@ -267,20 +272,111 @@
                "x")
             "host-interop keys work across different types using the same keys")))
 
-    (testing "j/call with type"
+    (testing "function operations with deftype"
 
       (deftype F [someArg]
         Object
         (someFunction [this s] [someArg s]))
 
-      (let [f (new F "x")]
+      (let [F-instance (-> (new F "x")
+                           (j/assoc! :staticFunction identity))]
 
-        (is (= (.someFunction f "y")
-               (j/call f .-someFunction "y")
-               ["x" "y"]))
+        (is (= (.someFunction F-instance "y")
+               (j/call F-instance .-someFunction "y")
+               (j/apply F-instance .-someFunction #js["y"])
+               ["x" "y"])
+            "host interop, j/call, and j/apply equivalence")
+
+        (is (= (j/call F-instance :staticFunction "y")
+               (apply j/call F-instance [:staticFunction "y"])
+               (j/apply F-instance :staticFunction #js["y"])
+               (apply j/apply F-instance [:staticFunction #js["y"]])
+               "y"))
 
         (when advanced?
           (is (thrown? js/Error
                        (= ["x" "y"]
-                          (j/call f :someFunction "y")))
-              "advanced: j/call with keyword throws on renamable key"))))))
+                          (j/call F-instance :someFunction "y")))
+              "advanced: j/call with keyword throws on renamable key")
+          (is (thrown? js/Error
+                       (= ["x" "y"]
+                          (j/apply F-instance :someFunction #js["y"])))
+              "advanced: j/apply with keyword throws on renamable key"))
+
+        (testing "nested function operations"
+
+          (deftype G [someArg]
+            Object
+            (someFunction [this s]
+              [someArg s]))
+
+          (let [obj #js{:xxxxx #js{:yyyyy (-> (new G "x")
+                                              (j/assoc! :staticFunction identity
+                                                        .-dynamicKey 999))}}]
+            (testing "static function"
+              (is (-> obj
+                      (j/get-in [:xxxxx :yyyyy])
+                      (j/call :staticFunction 10)
+                      (= 10)))
+              (is (-> obj
+                      (j/get-in [:xxxxx :yyyyy])
+                      (j/apply :staticFunction #js[10])
+                      (= 10))))
+
+            (testing "renamable method"
+              (is (-> obj
+                      (j/get-in [:xxxxx :yyyyy])
+                      (j/call .someFunction 10)
+                      (= ["x" 10]))
+                  "j/call, nested application")
+              (is (-> obj
+                      (j/get-in [:xxxxx :yyyyy])
+                      (j/apply .someFunction #js[10])
+                      (= ["x" 10]))
+                  "j/apply, nested application"))
+
+            (testing "renamable property"
+              (is (-> obj
+                      (j/get-in [:xxxxx :yyyyy .-dynamicKey])
+                      (= 999)))
+
+              (is (-> obj
+                      (j/get-in [:xxxxx :yyyyy :dynamicKey])
+                      (advanced-not= 999)))))))))
+
+  (testing "function operations with deftype"
+
+    (deftype H [someArg]
+      Object
+      (some_fn_H [this s] [someArg s])
+      (some_fn_HH [this s] [someArg s]))
+
+    (let [h-inst (new H "x")]
+
+      (is (= (.some_fn_H h-inst "y")
+             ["x" "y"]))
+
+      (is (= (j/call h-inst .-some_fn_H 10)
+             ["x" 10])
+          "some_fn_H is not inlined by GCC")
+
+      ;; this test represents _weird behaviour_,
+      ;; GCC has inlined `some_fn_H`
+      (let [property-name (reflect/objectProperty "some_fn_HH" h-inst)
+            some_fn2 (gobj/get h-inst property-name)]
+
+        (is (= (.some_fn_HH h-inst "y")
+               ["x" "y"]))
+
+
+        (is (= (.call some_fn2 h-inst 10)
+               (if advanced?
+                 ["x" "y"]
+                 ["x" 10]))
+            "some_fn_H is inlined by GCC")
+
+        ;; either of the following two expressions can prevent this inlining
+        #_(reflect/sinkValue (.-some_fn_HH h-inst))
+        #_(.-some_fn_HH h-inst)
+
+        ))))
