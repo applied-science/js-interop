@@ -375,8 +375,28 @@
                  ["x" 10]))
             "some_fn_H is inlined by GCC")
 
-        ;; either of the following two expressions can prevent this inlining
-        #_(reflect/sinkValue (.-some_fn_HH h-inst))
+        ;; either of the following two expressions can prevent this inlining.
+        ;; sinkValue has the further effect of preventing DCE.
         #_(.-some_fn_HH h-inst)
+        #_(reflect/sinkValue
+            (.-some_fn_HH h-inst))
+        )))
 
-        ))))
+  (testing "object creation"
+
+    (let [o (j/obj :aaaaa 1
+                   :bbbbb 2
+                   .-ccccc 3
+                   .-ddddd 4)]
+      (is (= [(j/get o :aaaaa)
+              (j/get o :bbbbb)
+              (j/get o .-ccccc)
+              (j/get o .-ddddd)]
+             [1 2 3 4])))
+
+    (let [o2 (apply j/obj [:aaaaa 1
+                           :bbbbb 2])]
+
+      (is (= [(j/get o2 :aaaaa)
+              (j/get o2 :bbbbb)]
+             [1 2])))))

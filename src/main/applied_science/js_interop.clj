@@ -31,7 +31,7 @@
 
 (defn wrap-key
   "Convert key to string at compile time when possible."
-  ([k] (wrap-key k 'applied-science.js-interop/_obj))
+  ([k] (wrap-key k 'applied-science.js-interop/reflection-stub))
   ([k obj]
    (cond
      (string? k) k
@@ -171,3 +171,13 @@
   `(let [obj# ~obj
          f# (get obj# ~k)]
      (.apply f# obj# ~args)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Object creation
+
+(defmacro obj
+  [& keyvals]
+  `(-> (~'cljs.core/js-obj)
+       ~@(for [[k v] (partition 2 keyvals)]
+           `(assoc! ~k ~v))))

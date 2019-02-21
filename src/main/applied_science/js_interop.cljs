@@ -9,7 +9,7 @@
             [cljs.core :as core])
   (:require-macros [applied-science.js-interop :as j]))
 
-(def ^:private _obj "Plain object used as parent for goog.reflect/objectProperty calls" #js{})
+(def ^:private reflection-stub "Plain object used as parent for goog.reflect/objectProperty calls" #js{})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -220,3 +220,16 @@
 
 (defn apply [obj k arg-array]
   (.apply (j/get obj k) obj arg-array))
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Object creation
+
+(defn obj
+  "Create JavaSript object from an even number arguments representing
+   interleaved keys and values. Dot-prefixed symbol keys will be renamable."
+  [& keyvals]
+  (let [obj (js-obj)]
+    (doseq [[k v] (partition 2 keyvals)]
+      (j/assoc! obj k v))
+    obj))
