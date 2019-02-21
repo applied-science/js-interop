@@ -84,16 +84,20 @@
 (defn contains? [o k]
   (gobj/containsKey o (wrap-key k)))
 
-(defn select-keys
+(defn select-keys*
   "Returns an object containing only those entries in `o` whose key is in `ks`"
   [o ks]
   (reduce (fn [m k]
-            (let [k (wrap-key k)]
-              (cond-> m
-                      (gobj/containsKey o k)
-                      (doto
-                        (core/unchecked-set k
-                                            (gobj/get o k nil)))))) #js {} ks))
+            (cond-> m
+                    (gobj/containsKey o k)
+                    (doto
+                      (core/unchecked-set k
+                                          (gobj/get o k nil))))) #js {} ks))
+
+(defn select-keys
+  "Returns an object containing only those entries in `o` whose key is in `ks`"
+  [o ks]
+  (select-keys* o (mapv wrap-key ks)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
