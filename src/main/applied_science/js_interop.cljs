@@ -9,23 +9,19 @@
             [cljs.core :as core])
   (:require-macros [applied-science.js-interop :as j]))
 
-(def ^:private reflection-stub "Plain object used as parent for goog.reflect/objectProperty calls" #js{})
+(def ^:private lookup-sentinel #js{})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Key conversion
+;;
+;; Throughout this namespace, k* and ks* refer to keys that have already been wrapped.
 
 (defn wrap-key
   "Returns `k` or, if it is a keyword, its name."
   [k]
   (cond-> k
           (keyword? k) (name)))
-
-(defn wrap-keys-js
-  [ks]
-  (reduce (fn [^js out k]
-            (doto out
-              (.push (wrap-key k)))) #js [] ks))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -49,45 +45,42 @@
   ([obj k not-found]
    (j/get obj k not-found)))
 
-(defn ^:private get-value-by-keys
-  "INTERNAL, looks up `key-arr` in `obj`, stopping at any `nil` value"
-  [obj ^js/Array key-arr]
-  (let [end (.-length key-arr)]
-    (loop [^js/Number i 0
-           obj obj]
-      (if (or (= i end)
-              (nil? obj))
-        obj
-        (recur (inc i)
-               (gobj/get obj (aget key-arr i)))))))
+(defn- get-value-by-keys
+  "Look up `ks` in `obj`, stopping at any nil"
+  [obj ks*]
+  (when obj
+    (let [end (count ks*)]
+      (loop [i 0
+             obj obj]
+        (if (or (= i end)
+                (nil? obj))
+          obj
+          (recur (inc i)
+                 (core/unchecked-get obj (nth ks* i))))))))
 
 (defn get-in*
-  "INTERNAL, mutates `key-arr`"
-  ([obj ^js/Array key-arr]
-   (when obj
-     (get-value-by-keys obj key-arr)))
-  ([obj ^js/Array key-arr not-found]
-   (let [last-k (.pop key-arr)]
-     (if-some [last-obj (when obj
-                          (get-value-by-keys obj key-arr))]
-       (gobj/get last-obj last-k not-found)
-       not-found))))
+  ([obj ks*]
+   (get-value-by-keys obj ks*))
+  ([obj ks* not-found]
+   (if-some [last-obj (get-value-by-keys obj (butlast ks*))]
+     (j/get last-obj (peek ks*) not-found)
+     not-found)))
 
 (defn get-in
-  "Returns the value in a nested object structure,
-  where ks is a sequence of keys. Returns nil if the key is not present,
-  or the not-found value if supplied."
+  "Returns the value in a nested object structure, where ks is
+   a sequence of keys. Returns nil if the key is not present,
+   or the not-found value if supplied."
   ([obj ks]
-   (get-in* obj (wrap-keys-js ks)))
+   (get-in* obj (mapv wrap-key ks)))
   ([obj ks not-found]
-   (get-in* obj (wrap-keys-js ks) not-found)))
+   (get-in* obj (mapv wrap-key ks) not-found)))
 
 (deftype JSLookup [obj]
   ILookup
   (-lookup [_ k]
-    (gobj/get obj (wrap-key k)))
+    (j/get obj k))
   (-lookup [_ k not-found]
-    (gobj/get obj (wrap-key k) not-found))
+    (j/get obj k not-found))
   IDeref
   (-deref [o] obj))
 
@@ -101,13 +94,14 @@
 
 (defn select-keys*
   "Returns an object containing only those entries in `o` whose key is in `ks`"
-  [obj ks]
-  (reduce (fn [m k]
-            (cond-> m
-                    (gobj/containsKey obj k)
-                    (doto
-                      (core/unchecked-set k
-                                          (gobj/get obj k nil))))) #js {} ks))
+  [obj ks*]
+  (->> ks*
+       (reduce (fn [m k]
+                 (cond-> m
+                         (gobj/containsKey obj k)
+                         (doto
+                           (core/unchecked-set k
+                                               (core/unchecked-get obj k))))) #js {})))
 
 (defn select-keys
   "Returns an object containing only those entries in `o` whose key is in `ks`"
@@ -122,47 +116,29 @@
   "Sets key-value pairs on `obj`, returns `obj`."
   [obj & pairs]
   (let [obj (or obj #js {})]
-    (loop [[k v & more] pairs]
-      (gobj/set obj (wrap-key k) v)
-      (if (seq more)
-        (recur more)
+    (loop [[k v & kvs] pairs]
+      (unchecked-set obj k v)
+      (if kvs
+        (recur kvs)
         obj))))
 
-(defn ^:private get-in+!
-  "Like `get-in` but creates new objects for empty levels."
-  [obj ks]
-  (loop [ks ks
-         obj obj]
-    (if (nil? ks)
-      obj
-      (recur
-        (next ks)
-        (or (let [k (first ks)
-                  inner-obj (get obj k)]
-              (if (some? inner-obj)
-                inner-obj
-                (let [inner-obj #js {}]
-                  (core/unchecked-set obj k inner-obj)
-                  inner-obj))))))))
-
 (defn assoc-in*
-  "Mutates the value in a nested object structure, where ks is a
-  sequence of keys and v is the new value. If any levels do not
-  exist, objects will be created."
-  [obj ks v]
-  (assert (> (count ks) 0)
-          "assoc-in cannot accept an empty path")
-  (let [obj (or obj #js {})
-        inner-obj (get-in+! obj (butlast ks))]
-    (gobj/set inner-obj (peek ks) v)
+  [obj [k* & ks*] v]
+  (let [obj (or obj #js{})]
+    (core/unchecked-set obj k*
+                        (if ks*
+                          (assoc-in* (core/unchecked-get obj k*) ks* v)
+                          v))
     obj))
 
 (defn assoc-in!
   "Mutates the value in a nested object structure, where ks is a
   sequence of keys and v is the new value. If any levels do not
   exist, objects will be created."
-  [obj ks v]
-  (assoc-in* obj (mapv wrap-key ks) v))
+  [obj [k & ks] v]
+  (if ks
+    (assoc! obj k (assoc-in! (j/get obj k) ks v))
+    (assoc! obj k v)))
 
 (defn update!
   "'Updates' a value in a JavaScript object, where k is a key and
@@ -171,24 +147,16 @@
   If the key does not exist, nil is passed as the old value."
   [obj k f & args]
   (let [obj (or obj #js{})
-        k (wrap-key k)
-        v (gobj/get obj k)]
-    (doto obj
-      (gobj/set k (core/apply f (cons v args))))))
+        k* (wrap-key k)
+        v (core/apply f (core/unchecked-get obj k*) args)]
+    (core/unchecked-set obj k* v)
+    obj))
 
 (defn update-in*
-  "'Updates' a value in a nested object structure, where ks is a
-  sequence of keys and f is a function that will take the old value
-  and any supplied args and return the new value, mutating the
-  nested structure.  If any levels do not exist, objects will be
-  created."
-  [obj ks f & args]
-  (assert (> (count ks) 0)
-          "assoc-in cannot accept an empty path")
+  [obj ks* f args]
   (let [obj (or obj #js {})
-        ks (mapv wrap-key ks)
-        val-at-path (.apply gobj/getValueByKeys nil (to-array (cons obj ks)))]
-    (assoc-in! obj ks (core/apply f (cons val-at-path args)))))
+        old-val (get-value-by-keys obj ks*)]
+    (assoc-in* obj ks* (core/apply f old-val args))))
 
 (defn update-in!
   "'Updates' a value in a nested object structure, where ks is a
@@ -197,7 +165,7 @@
   nested structure.  If any levels do not exist, objects will be
   created."
   [obj ks f & args]
-  (core/apply update-in* obj (mapv wrap-key ks) f args))
+  (update-in* obj (mapv wrap-key ks) f args))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

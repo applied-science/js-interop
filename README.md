@@ -1,6 +1,6 @@
 # applied-science/js-interop
 
-A JavaScript interop library for ClojureScript.
+A JavaScript-interop library for ClojureScript.
 
 ## Features
 

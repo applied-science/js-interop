@@ -1,9 +1,12 @@
 (ns applied-science.js-interop
   (:refer-clojure :exclude [get get-in contains? select-keys assoc! unchecked-get unchecked-set apply])
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [clojure.core :as core]))
 
 (def reflect-property 'js/goog.reflect.objectProperty)
 (def reflect-contains? 'js/goog.reflect.canAccessProperty)
+
+(def lookup-sentinel 'applied-science.js-interop/lookup-sentinel)
 
 (def gobj-get 'goog.object/get)
 (def gobj-set 'goog.object/set)
@@ -13,11 +16,9 @@
 ;;
 ;; Host-key utils
 
-(defn- dot-field? [k]
-  (str/starts-with? (name k) ".-"))
-
 (defn- dot-sym? [k]
-  (str/starts-with? (name k) "."))
+  (and (symbol? k)
+       (str/starts-with? (name k) ".")))
 
 (defn- dot-name [sym]
   (str/replace (name sym) #"^\.\-?" ""))
@@ -31,42 +32,22 @@
 
 (defn wrap-key
   "Convert key to string at compile time when possible."
-  ([k] (wrap-key k 'applied-science.js-interop/reflection-stub))
+  ([k]
+   (wrap-key k nil))
   ([k obj]
    (cond
-     (string? k) k
+     (or (string? k)
+         (number? k)) k
      (keyword? k) (name k)
      (symbol? k) (cond (= (:tag (meta k)) "String") k
                        (dot-sym? k) `(~reflect-property ~(dot-name k) ~obj)
                        :else `(wrap-key ~k))
      :else `(wrap-key ~k))))
 
-(defn wrap-keys->vec
-  "Convert keys of path to strings at compile time where possible."
+(defn wrap-keys
+  "Fallback to wrapping keys at runtime"
   [ks]
-  (if (vector? ks)
-    (mapv wrap-key ks)
-    `(mapv wrap-key ~ks)))
-
-(defn wrap-keys->array [ks]
-  (if (vector? ks)
-    `(~'cljs.core/array ~@(mapv wrap-key ks))
-    `(~'applied-science.js-interop/wrap-keys->array ~ks)))
-
-(defn- doto-pairs
-  "Expands to an expression which calls `f` on `o` with
-   successive pairs of arguments, returning `o`."
-  [obj f pairs]
-  (let [o (gensym "obj")]
-    `(let [~o ~obj]
-       (doto ~o
-         ~@(loop [pairs (partition 2 pairs)
-                  out []]
-             (if (empty? pairs)
-               out
-               (let [[k v] (first pairs)]
-                 (recur (rest pairs)
-                        (conj out (f (wrap-key k o) v))))))))))
+  `(mapv wrap-key ~ks))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -80,42 +61,52 @@
 (defmacro unchecked-set [obj & pairs]
   (let [o (gensym "obj")]
     `(let [~o ~obj]
-       (doto ~o
-         ~@(for [[k v] (partition 2 pairs)]
-             (if (dot-sym? k)
-               `(-> ~(dot-get k) (set! ~v))
-               `(~'cljs.core/unchecked-set ~(wrap-key k o) ~v)))))))
+       ~@(for [[k v] (partition 2 pairs)]
+           (if (dot-sym? k)
+             `(set! (~(dot-get k) ~o) ~v)
+             `(~'cljs.core/unchecked-set ~o ~(wrap-key k) ~v)))
+       ~o)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Lookups
 
-(defn- wrapped-get
+(defn- get*
   ([obj k]
-   (wrapped-get obj k nil))
+   (get* obj k nil))
   ([obj k not-found]
-   `(if (and (some? ~obj)
-             (~'cljs.core/js-in ~(wrap-key k obj) ~obj))
-      ~(if (dot-sym? k)
-         `(~(dot-get k) ~obj)
-         `(unchecked-get ~obj ~k))
-      ~not-found)))
+   (if (dot-sym? k)
+     (let [o (gensym "obj")]
+       `(let [~o ~obj]
+          (if (~gobj-contains? ~o ~(wrap-key k o))
+            (~(dot-get k) ~o)
+            ~not-found)))
+     `(~gobj-get ~obj ~(wrap-key k) ~not-found))))
 
 (defmacro get
   ([obj k]
-   (let [o (gensym "obj")]
-     `(let [~o ~obj]
-        ~(wrapped-get o k))))
+   (get* obj k))
   ([obj k not-found]
-   (let [o (gensym "obj")]
-     `(let [~o ~obj]
-        ~(wrapped-get o k not-found)))))
+   (get* obj k not-found)))
 
 (defmacro get-in
   ([obj ks]
-   `(get-in ~obj ~ks nil))
+   (reduce get* obj ks))
   ([obj ks not-found]
-   `(~'applied-science.js-interop/get-in* ~obj ~(wrap-keys->array ks) ~not-found)))
+   (if (vector? ks)
+     (let [o (gensym "obj")
+           sentinel (gensym "sent")]
+       `(let [~sentinel ~lookup-sentinel
+              out# ~(reduce
+                      (fn [out k]
+                        `(let [out# ~out]
+                           (if (identical? out# ~sentinel)
+                             ~sentinel
+                             (get out# ~k ~sentinel)))) obj ks)]
+          (if (= ~sentinel out#)
+            ~not-found
+            out#)))
+     `(~'applied-science.js-interop/get-in* ~obj ~(wrap-keys ks) ~not-found))))
 
 (defn contains? [obj k]
   (let [o (gensym "obj")]
@@ -133,30 +124,39 @@
                 (unchecked-set ~out ~k
                                (unchecked-get ~o ~k))))
          ~out))
-    `(~'applied-science.js-interop/select-keys* ~obj ~(wrap-keys->vec ks))))
+    `(~'applied-science.js-interop/select-keys* ~obj ~(wrap-keys ks))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Mutations
 
 (defmacro assoc! [obj & pairs]
-  (doto-pairs `(or ~obj (~'js-obj))
-              (fn [k v]
-                `(~gobj-set ~k ~v)) pairs))
+  `(-> (or ~obj (~'cljs.core/js-obj))
+       ~@(for [[k v] (partition 2 pairs)]
+           `(unchecked-set ~k ~v))))
 
 (defmacro update! [obj k f & args]
   (let [o (gensym "obj")]
-    `(let [~o (or ~obj (~'cljs.core/js-obj))
-           k# ~(wrap-key k o)
-           v# (~gobj-get ~o k#)]
-       (doto ~o
-         (~gobj-set k# (~f v# ~@args))))))
+    `(let [~o (or ~obj (~'cljs.core/js-obj))]
+       (unchecked-set ~o ~k
+                      (~f (unchecked-get ~o ~k) ~@args)))))
 
 (defmacro assoc-in! [obj ks v]
-  `(~'applied-science.js-interop/assoc-in* ~obj ~(wrap-keys->vec ks) ~v))
+  (if (vector? ks)
+    (let [[k & ks] ks]
+      (if ks
+        (let [o (gensym "obj")]
+          `(let [~o ~obj]
+             (assoc! ~o ~k (assoc-in! (get ~o ~k) ~(vec ks) ~v))))
+        `(assoc! ~obj ~k ~v)))
+    `(~'applied-science.js-interop/assoc-in* ~obj ~(wrap-keys ks) ~v)))
 
 (defmacro update-in! [obj ks f & args]
-  `(~'applied-science.js-interop/update-in* ~obj ~(wrap-keys->vec ks) ~f ~@args))
+  (if (vector? ks)
+    (let [o (gensym "obj")]
+      `(let [~o (or ~obj (~'cljs.core/js-obj))]
+         (assoc-in! ~o ~ks (~f (get-in ~o ~ks) ~@args))))
+    `(~'applied-science.js-interop/update-in* ~obj ~(wrap-keys ks) ~f ~(vec args))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

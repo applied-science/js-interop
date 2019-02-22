@@ -190,11 +190,12 @@
     (apply j/apply [#js [10] :indexOf #js[10]])
     0)
 
-  (when-not advanced?
-    (is (thrown? js/Error
-                 (j/assoc-in! #js {} [] 10))
-        "Empty paths for mutations are not accepted,
-         JavaScript objects cannot have nil as a key"))
+
+  (is (-> (j/assoc-in! #js {} [] 10)
+          (j/get :null)
+          (= 10))
+      "Same behaviour as Clojure for assoc-in with empty path.
+       JavaScript coerces `nil` to the string 'null'.")
 
   (testing "Host interop keys"
 
