@@ -73,12 +73,18 @@
 ;; Unchecked operations
 
 (defmacro unchecked-get [obj k]
-  `(~'cljs.core/unchecked-get ~obj ~(wrap-key k)))
+  (if (dot-sym? k)
+    `(~(dot-get k) ~obj)
+    `(~'cljs.core/unchecked-get ~obj ~(wrap-key k))))
 
 (defmacro unchecked-set [obj & pairs]
-  (doto-pairs obj
-              (fn [k v]
-                `(~'cljs.core/unchecked-set ~k ~v)) pairs))
+  (let [o (gensym "obj")]
+    `(let [~o ~obj]
+       (doto ~o
+         ~@(for [[k v] (partition 2 pairs)]
+             (if (dot-sym? k)
+               `(-> ~(dot-get k) (set! ~v))
+               `(~'cljs.core/unchecked-set ~(wrap-key k o) ~v)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -118,9 +124,15 @@
 
 (defmacro select-keys [obj ks]
   (if (vector? ks)
-    (let [o (gensym "obj")]
-      `(let [~o ~obj]
-         (~'applied-science.js-interop/select-keys* ~o ~(mapv #(wrap-key % o) ks))))
+    (let [o (gensym "obj")
+          out (gensym "out")]
+      `(let [~o ~obj
+             ~out (~'cljs.core/js-obj)]
+         ~@(for [k ks]
+             `(when (~gobj-contains? ~o ~(wrap-key k o))
+                (unchecked-set ~out ~k
+                               (unchecked-get ~o ~k))))
+         ~out))
     `(~'applied-science.js-interop/select-keys* ~obj ~(wrap-keys->vec ks))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;

@@ -1,5 +1,6 @@
 (ns applied-science.js-interop-tests
   (:require [applied-science.js-interop :as j]
+            [clojure.core :as core]
             [cljs.test :as test :refer [is
                                         are
                                         testing
@@ -210,11 +211,14 @@
 
     (testing "select-keys"
       (let [obj (-> #js{}
-                    (j/assoc! .-aaaaa 1 .-bbbbb 2 .-ccccc 3)
-                    (j/select-keys [.-aaaaa .-bbbbb]))]
+                    (j/assoc! .-aaaaa 1 .-bbbbb 2 .-ccccc 3 :ddddd 4)
+                    (j/select-keys [.-aaaaa .-bbbbb :ddddd]))]
+
         (is (= 1 (j/get obj .-aaaaa)))
         (is (= 2 (j/get obj .-bbbbb)))
         (is (nil? (j/get obj .-ccccc)))
+        (is (= 4 (j/get obj :ddddd)))
+
         (is (advanced-not= 1 (j/get obj :aaaaa)))
         (is (advanced-not= 2 (j/get obj :bbbbb)))))
 
@@ -381,6 +385,33 @@
         #_(reflect/sinkValue
             (.-some_fn_HH h-inst))
         )))
+
+  (testing "unchecked operations"
+
+    (is (thrown? js/Error
+                 (j/unchecked-get nil :k)))
+
+    (let [o #js{}]
+      (j/unchecked-set o :x 1 .-yyyyy 2 .-zzzzz 3)
+
+      (is (= (j/unchecked-get o :x)
+             (j/get o :x)
+             1))
+      (is (= (j/unchecked-get o .-yyyyy) 2))
+      (is (= (j/get o .-zzzzz) 3)))
+
+    (testing "unchecked-get compiles directly to expected syntax"
+      (is (= (macroexpand-1 '(applied-science.js-interop/unchecked-get o .-y))
+             '(.-y o)))
+
+      (is (-> '(applied-science.js-interop/unchecked-set o .-y :value)
+              (macroexpand-1)
+              (flatten)
+              (set)
+              (contains? '.-y))
+          "unchecked-set uses host-interop syntax directly (GCC friendly)"))
+
+    )
 
   (testing "object creation"
 
