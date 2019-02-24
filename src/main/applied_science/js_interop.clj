@@ -7,9 +7,10 @@
 
 (def lookup-sentinel 'applied-science.js-interop/lookup-sentinel)
 
-(def gobj-get 'goog.object/get)
-(def gobj-set 'goog.object/set)
-(def gobj-contains? 'goog.object/containsKey)
+(def js-obj 'cljs.core/js-obj)
+
+(defn BOOL [form]
+  (vary-meta form assoc :tag 'boolean))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -48,6 +49,10 @@
   [ks]
   `(mapv wrap-key ~ks))
 
+(defn- contains? [o wrapped-k]
+  (assert (symbol? o))
+  (BOOL `(~'goog.object/containsKey ~o ~wrapped-k)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Unchecked operations
@@ -74,13 +79,15 @@
   ([obj k]
    (get* obj k nil))
   ([obj k not-found]
-   (if (dot-sym? k)
-     (let [o (gensym "obj")]
-       `(let [~o ~obj]
-          (if (~gobj-contains? ~o ~(wrap-key k o))
-            (~(dot-get k) ~o)
-            ~not-found)))
-     `(~gobj-get ~obj ~(wrap-key k) ~not-found))))
+   (let [o (gensym "obj")
+         k-sym (gensym "k")]
+     `(let [~o ~obj
+            ~k-sym ~(wrap-key k o)]
+        (if ~(contains? o k-sym)
+          ~(if (dot-sym? k)
+             `(~(dot-get k) ~obj)
+             `(~'cljs.core/unchecked-get ~obj ~k-sym))
+          ~not-found)))))
 
 (defmacro get
   ([obj k]
@@ -107,19 +114,14 @@
             out#)))
      `(~'applied-science.js-interop/get-in* ~obj ~(wrap-keys ks) ~not-found))))
 
-(defn contains? [obj k]
-  (let [o (gensym "obj")]
-    `(let [~o ~obj]
-       (~gobj-contains? ~o ~(wrap-key k o)))))
-
 (defmacro select-keys [obj ks]
   (if (vector? ks)
     (let [o (gensym "obj")
           out (gensym "out")]
       `(let [~o ~obj
-             ~out (~'cljs.core/js-obj)]
+             ~out (~js-obj)]
          ~@(for [k ks]
-             `(when (~gobj-contains? ~o ~(wrap-key k o))
+             `(when ~(BOOL (contains? o (wrap-key k o)))
                 (unchecked-set ~out ~k
                                (unchecked-get ~o ~k))))
          ~out))
@@ -130,31 +132,47 @@
 ;; Mutations
 
 (defmacro assoc! [obj & pairs]
-  `(-> (or ~obj (~'cljs.core/js-obj))
+  `(-> (or ~obj (~js-obj))
        ~@(for [[k v] (partition 2 pairs)]
            `(unchecked-set ~k ~v))))
 
-(defmacro update! [obj k f & args]
-  (let [o (gensym "obj")]
-    `(let [~o (or ~obj (~'cljs.core/js-obj))]
-       (unchecked-set ~o ~k
-                      (~f (unchecked-get ~o ~k) ~@args)))))
+(defn- get+! [o k]
+  `(or (unchecked-get ~o ~k)
+       (let [new-o# (~js-obj)]
+         (unchecked-set ~o ~k new-o#)
+         new-o#)))
 
 (defmacro assoc-in! [obj ks v]
   (if (vector? ks)
-    (let [[k & ks] ks]
-      (if ks
-        (let [o (gensym "obj")]
-          `(let [~o ~obj]
-             (assoc! ~o ~k (assoc-in! (get ~o ~k) ~(vec ks) ~v))))
+    (let [[k & more-ks] ks]
+      (if more-ks
+        (let [o (gensym "obj")
+              inner-obj (gensym "i-obj")]
+          `(let [~o (or ~obj (~js-obj))
+                 ~inner-obj ~(reduce get+! o (drop-last ks))]
+             (unchecked-set ~inner-obj ~(last ks) ~v)
+             ~o))
         `(assoc! ~obj ~k ~v)))
     `(~'applied-science.js-interop/assoc-in* ~obj ~(wrap-keys ks) ~v)))
 
+(defmacro update! [obj k f & args]
+  (let [o (gensym "obj")]
+    `(let [~o (or ~obj (~js-obj))]
+       (unchecked-set ~o ~k
+                      (~f (unchecked-get ~o ~k) ~@args)))))
+
 (defmacro update-in! [obj ks f & args]
   (if (vector? ks)
-    (let [o (gensym "obj")]
-      `(let [~o (or ~obj (~'cljs.core/js-obj))]
-         (assoc-in! ~o ~ks (~f (get-in ~o ~ks) ~@args))))
+    (let [[k & more-ks] ks
+          o (gensym "obj")
+          inner-obj (gensym "i-obj")]
+      (if more-ks
+        `(let [~o (or ~obj (~js-obj))
+               ~inner-obj ~(reduce get+! o (drop-last ks))
+               v# (~f (get ~inner-obj ~(last ks)) ~@args)]
+           (unchecked-set ~inner-obj ~(last ks) v#)
+           ~o)
+        `(update! ~obj ~k ~f ~@args)))
     `(~'applied-science.js-interop/update-in* ~obj ~(wrap-keys ks) ~f ~(vec args))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -189,6 +207,6 @@
 
 (defmacro obj
   [& keyvals]
-  `(-> (~'cljs.core/js-obj)
+  `(-> (~js-obj)
        ~@(for [[k v] (partition 2 keyvals)]
            `(assoc! ~k ~v))))

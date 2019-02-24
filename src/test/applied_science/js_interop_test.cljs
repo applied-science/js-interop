@@ -107,6 +107,11 @@
     {:x {:y 10}}
 
     ;; assoc-in with nested nil
+    (j/assoc-in! #js {:x nil} [:x :y] 10)
+    (apply j/assoc-in! [#js {:x nil} [:x :y] 10])
+    {:x {:y 10}}
+
+    ;; assoc-in with nested nil
     (j/assoc-in! #js {:x #js {:y nil}} [:x :y] 10)
     (apply j/assoc-in! [#js {:x #js {:y nil}} [:x :y] 10])
     {:x {:y 10}}
@@ -139,6 +144,11 @@
     ;; update-in with args
     (j/update-in! nil [:x :y] (fnil + 0) 10)
     (apply j/update-in! [nil [:x :y] (fnil + 0) 10])
+    {:x {:y 10}}
+
+    ;; update-in with args
+    (j/update-in! #js {:x nil} [:x :y] (fnil + 0) 10)
+    (apply j/update-in! [#js {:x nil} [:x :y] (fnil + 0) 10])
     {:x {:y 10}}
 
     ;; update-in mutates provided object
