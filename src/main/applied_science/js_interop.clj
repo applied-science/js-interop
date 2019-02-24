@@ -4,7 +4,6 @@
             [clojure.core :as core]))
 
 (def reflect-property 'js/goog.reflect.objectProperty)
-(def reflect-contains? 'js/goog.reflect.canAccessProperty)
 
 (def lookup-sentinel 'applied-science.js-interop/lookup-sentinel)
 

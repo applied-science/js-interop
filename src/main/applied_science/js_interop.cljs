@@ -9,7 +9,7 @@
             [cljs.core :as core])
   (:require-macros [applied-science.js-interop :as j]))
 
-(def ^:private lookup-sentinel #js{})
+(def lookup-sentinel #js{})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

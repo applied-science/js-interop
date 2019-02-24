@@ -7,15 +7,22 @@
  []
 
  :builds
- {:test
+ {:test1
   {:target    :node-test
-   :output-to "out/node-tests.js"
-   :ns-regexp "-tests$"
+   :output-to "out/shadow-1.js"
+   :ns-regexp "-test$"
    :autorun   true}
-  :test-2
-  {:target    :node-test
-   :output-to "out/node-tests.js"
-   :ns-regexp "-tests$"
-   :autorun   true
-   :closure-defines {applied-science.js-interop-tests/advanced? true}
+  :test2
+  {:target           :node-test
+   :output-to        "out/shadow-2.js"
+   :ns-regexp        "-test$"
+   :autorun          true
+   :closure-defines  {applied-science.js-interop-test/advanced? true}
+   :compiler-options {:optimizations :advanced}}
+
+  :shadow-rename
+  {:target           :node-test
+   :output-to        "out/shadow-3.js"
+   :ns-regexp        "rename-test$"
+   :autorun          true
    :compiler-options {:optimizations :advanced}}}}

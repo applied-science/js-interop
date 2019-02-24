@@ -1,9 +1,11 @@
 {
   "scripts": {
-    "test": "shadow-cljs compile test && node out/node-tests.js"
+    "test1": "clojure -Atest -d src/test -o out/test-1 -c src/test/test1.edn",
+    "test2": "mkdir -p out/test-2/gen && clojure -Atest -d src/test -o out/test-2 -c src/test/test2.edn",
+    "test": "yarn test1 && yarn test2"
   },
   "dependencies": {
-    "shadow-cljs": "^2.8.2"
+    "shadow-cljs": "^2.8.9"
   },
   "devDependencies": {
     "source-map-support": "^0.5.10"

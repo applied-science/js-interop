@@ -1,4 +1,13 @@
-{:paths ["src/main"
-         "src/test"]
- :deps {org.clojure/clojure         {:mvn/version "1.10.0"}
-        org.clojure/clojurescript   {:mvn/version "1.10.439"}}}
+{:paths
+ ["src/main"
+  "src/test"]
+
+ :deps
+ {org.clojure/clojure       {:mvn/version "1.10.0"}
+  org.clojure/clojurescript {:mvn/version "1.10.520"}}
+
+ :aliases
+ {:test
+  {:extra-deps {olical/cljs-test-runner {:mvn/version "3.5.0"}}
+   :extra-paths ["out/test-2/gen"]
+   :main-opts ["-m" "cljs-test-runner.main"]}}}

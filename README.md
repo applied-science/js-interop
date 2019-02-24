@@ -159,10 +159,5 @@ To run the tests:
 
 ```clj
 yarn install;
-
-# run test build 1:
-shadow-cljs compile test;
-
-# run test build 2, w/ advanced compilation:
-shadow-cljs release test-2;
+yarn test;
 ```

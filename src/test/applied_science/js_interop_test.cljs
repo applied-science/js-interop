@@ -1,4 +1,4 @@
-(ns applied-science.js-interop-tests
+(ns applied-science.js-interop-test
   (:require [applied-science.js-interop :as j]
             [clojure.core :as core]
             [cljs.test :as test :refer [is
@@ -299,6 +299,10 @@
                "y"))
 
         (when advanced?
+
+          (is (nil? (j/get F-instance :someFunction))
+              "Property is renamed on `deftype`")
+
           (is (thrown? js/Error
                        (= ["x" "y"]
                           (j/call F-instance :someFunction "y")))

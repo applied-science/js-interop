@@ -1,0 +1,3 @@
+{:infer-externs true
+ :optimizations :advanced
+ :closure-defines {applied-science.js-interop-test/advanced? true}}
