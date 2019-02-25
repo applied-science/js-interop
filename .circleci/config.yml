@@ -1,0 +1,22 @@
+# Javascript Node CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-javascript/ for more details
+#
+version: 2
+jobs:
+  build:
+    docker:
+      # specify the version you desire here
+      - image: circleci/clojure:tools-deps-1.10.0.411-node-browsers-legacy
+
+    steps:
+      - checkout
+
+      - run:
+          name: Test (:optimizations :none)
+          command: yarn test1;
+      - run:
+          name: Test (:optimizations :advanced)
+          command: yarn test2;
+
+

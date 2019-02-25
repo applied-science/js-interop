@@ -7,9 +7,11 @@
 
 (def lookup-sentinel 'applied-science.js-interop/lookup-sentinel)
 
-(def js-obj 'cljs.core/js-obj)
+(def empty-obj '(cljs.core/js-obj))
 
-(defn BOOL [form]
+(defn- BOOL
+  "Returns a ^boolean type-hinted form from a macro"
+  [form]
   (vary-meta form assoc :tag 'boolean))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -119,7 +121,7 @@
     (let [o (gensym "obj")
           out (gensym "out")]
       `(let [~o ~obj
-             ~out (~js-obj)]
+             ~out ~empty-obj]
          ~@(for [k ks]
              `(when ~(BOOL (contains? o (wrap-key k o)))
                 (unchecked-set ~out ~k
@@ -131,48 +133,62 @@
 ;;
 ;; Mutations
 
-(defmacro assoc! [obj & pairs]
-  `(-> (or ~obj (~js-obj))
-       ~@(for [[k v] (partition 2 pairs)]
-           `(unchecked-set ~k ~v))))
+;; helper functions
 
-(defn- get+! [o k]
-  `(or (unchecked-get ~o ~k)
-       (let [new-o# (~js-obj)]
-         (unchecked-set ~o ~k new-o#)
-         new-o#)))
+(defn- some-or
+  "Like `or` but switches on `some?` instead of truthiness. Eg. will stop at and return `false`."
+  [a b]
+  `(if (nil? ~a) ~b ~a))
+
+(defn- get+!
+  "Returns `k` of `o`. If nil, sets and returns a new empty child object."
+  [o k]
+  (let [child (gensym "child")]
+    `(let [~child (unchecked-get ~o ~k)]
+       ~(some-or child
+                 `(let [new-child# ~empty-obj]
+                    (unchecked-set ~o ~k new-child#)
+                    new-child#)))))
+
+(defn- get-in+!
+  [o ks]
+  (reduce get+! o ks))
+
+;; core operations
+
+(defmacro assoc! [obj & pairs]
+  (let [o (gensym "obj")]
+    `(let [~o ~obj]
+       (-> ~(some-or o empty-obj)
+           ~@(for [[k v] (partition 2 pairs)]
+               `(unchecked-set ~k ~v))))))
 
 (defmacro assoc-in! [obj ks v]
   (if (vector? ks)
-    (let [[k & more-ks] ks]
-      (if more-ks
-        (let [o (gensym "obj")
-              inner-obj (gensym "i-obj")]
-          `(let [~o (or ~obj (~js-obj))
-                 ~inner-obj ~(reduce get+! o (drop-last ks))]
-             (unchecked-set ~inner-obj ~(last ks) ~v)
-             ~o))
-        `(assoc! ~obj ~k ~v)))
+    (let [o (gensym "obj")]
+      `(let [~o ~obj
+             ~o ~(some-or o empty-obj)
+             inner-obj# ~(get-in+! o (drop-last ks))]
+         (unchecked-set inner-obj# ~(last ks) ~v)
+         ~o))
     `(~'applied-science.js-interop/assoc-in* ~obj ~(wrap-keys ks) ~v)))
 
 (defmacro update! [obj k f & args]
   (let [o (gensym "obj")]
-    `(let [~o (or ~obj (~js-obj))]
+    `(let [~o ~obj
+           ~o ~(some-or o empty-obj)]
        (unchecked-set ~o ~k
                       (~f (unchecked-get ~o ~k) ~@args)))))
 
 (defmacro update-in! [obj ks f & args]
   (if (vector? ks)
-    (let [[k & more-ks] ks
-          o (gensym "obj")
+    (let [o (gensym "obj")
           inner-obj (gensym "i-obj")]
-      (if more-ks
-        `(let [~o (or ~obj (~js-obj))
-               ~inner-obj ~(reduce get+! o (drop-last ks))
-               v# (~f (get ~inner-obj ~(last ks)) ~@args)]
-           (unchecked-set ~inner-obj ~(last ks) v#)
-           ~o)
-        `(update! ~obj ~k ~f ~@args)))
+      `(let [~o ~obj
+             ~o ~(some-or o empty-obj)
+             inner-obj# ~(get-in+! o (drop-last ks))]
+         (update! inner-obj# ~(last ks) ~f ~@args)
+         ~o))
     `(~'applied-science.js-interop/update-in* ~obj ~(wrap-keys ks) ~f ~(vec args))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -207,6 +223,6 @@
 
 (defmacro obj
   [& keyvals]
-  `(-> (~js-obj)
+  `(-> ~empty-obj
        ~@(for [[k v] (partition 2 keyvals)]
            `(assoc! ~k ~v))))

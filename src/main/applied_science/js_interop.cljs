@@ -89,7 +89,7 @@
   [obj]
   (JSLookup. obj))
 
-(defn contains? [obj k]
+(defn contains? ^boolean [obj k]
   (gobj/containsKey obj (wrap-key k)))
 
 (defn select-keys*
@@ -98,7 +98,7 @@
   (->> ks*
        (reduce (fn [m k]
                  (cond-> m
-                         (gobj/containsKey obj k)
+                         ^boolean (gobj/containsKey obj k)
                          (doto
                            (core/unchecked-set k
                                                (core/unchecked-get obj k))))) #js {})))
@@ -115,7 +115,7 @@
 (defn assoc!
   "Sets key-value pairs on `obj`, returns `obj`."
   [obj & pairs]
-  (let [obj (or obj #js {})]
+  (let [obj (if (some? obj) obj #js{})]
     (loop [[k v & kvs] pairs]
       (unchecked-set obj k v)
       (if kvs
@@ -124,7 +124,7 @@
 
 (defn assoc-in*
   [obj [k* & ks*] v]
-  (let [obj (or obj #js{})]
+  (let [obj (if (some? obj) obj #js{})]
     (core/unchecked-set obj k*
                         (if ks*
                           (assoc-in* (core/unchecked-get obj k*) ks* v)
@@ -146,7 +146,7 @@
   args and return the new value, which replaces the old value.
   If the key does not exist, nil is passed as the old value."
   [obj k f & args]
-  (let [obj (or obj #js{})
+  (let [obj (if (some? obj) obj #js{})
         k* (wrap-key k)
         v (core/apply f (core/unchecked-get obj k*) args)]
     (core/unchecked-set obj k* v)
@@ -154,7 +154,7 @@
 
 (defn update-in*
   [obj ks* f args]
-  (let [obj (or obj #js {})
+  (let [obj (if (some? obj) obj #js{})
         old-val (get-value-by-keys obj ks*)]
     (assoc-in* obj ks* (core/apply f old-val args))))
 
