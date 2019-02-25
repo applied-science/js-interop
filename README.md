@@ -2,6 +2,8 @@
 
 A JavaScript-interop library for ClojureScript.
 
+[![CircleCI](https://circleci.com/gh/appliedsciencestudio/js-interop.svg?style=svg)](https://circleci.com/gh/appliedsciencestudio/js-interop)
+
 ## Features
 
 1. Operations that mirror behaviour of core Clojure functions like `get`, `get-in`, `assoc!`, etc.
@@ -36,7 +38,7 @@ This library is **alpha** and is currently only available as a git dep in `deps.
 ```clj
 :deps
 {applied-science/js-interop {:git/url "https://github.com/appliedsciencestudio/js-interop"
-                             :sha "92769cdaa0196639d1dc04087442b8a37985f17e"}}
+                             :sha "eea11befcdc7fa64fe8c936685da90fbf4710edf"}}
 ```
 
 ## Motivation
