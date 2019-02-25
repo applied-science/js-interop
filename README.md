@@ -18,17 +18,19 @@ A JavaScript-interop library for ClojureScript.
 (def o #js{ …some javascript object… })
 
 (j/get o :x)
+(j/get o .-x "fallback-value")
 (j/get-in o [:x :y])
 (j/select-keys o [:a :b :c])
 
+(let [{:keys [x]} (j/lookup o)]
+  ...)
+
 (j/assoc! o :a 1)
 (j/assoc-in! o [:x :y] 100)
+(j/assoc-in! o [.-x .-y] 100)
 
 (j/update! o :a inc)
 (j/update-in! o [:x :y] + 10)
-  
-(j/get o .-x)
-(j/assoc-in! o [.-x .-y] 100)
 ```    
 
 ## Installation
@@ -38,7 +40,7 @@ This library is **alpha** and is currently only available as a git dep in `deps.
 ```clj
 :deps
 {applied-science/js-interop {:git/url "https://github.com/appliedsciencestudio/js-interop"
-                             :sha "e8666ad4680c9642e88ff23fc213b6e4e8bf5d6d"}}
+                             :sha "c39b30a532481e879fa8c4b25c47bf2407899fc7"}}
 ```
 
 ## Motivation

@@ -1,7 +1,6 @@
 (ns applied-science.js-interop
   (:refer-clojure :exclude [get get-in contains? select-keys assoc! unchecked-get unchecked-set apply])
-  (:require [clojure.string :as str]
-            [clojure.core :as core]))
+  (:require [clojure.string :as str]))
 
 (def reflect-property 'js/goog.reflect.objectProperty)
 
@@ -94,8 +93,7 @@
    (reduce get* obj ks))
   ([obj ks not-found]
    (if (vector? ks)
-     (let [o (gensym "obj")
-           sentinel (gensym "sent")]
+     (let [sentinel (gensym "sent")]
        `(let [~sentinel ~lookup-sentinel
               out# ~(reduce
                       (fn [out k]
@@ -174,8 +172,7 @@
 
 (defmacro update-in! [obj ks f & args]
   (if (vector? ks)
-    (let [o (gensym "obj")
-          inner-obj (gensym "i-obj")]
+    (let [o (gensym "obj")]
       `(let [~o ~obj
              ~o ~(some-or o empty-obj)
              inner-obj# ~(get-in+! o (drop-last ks))]
