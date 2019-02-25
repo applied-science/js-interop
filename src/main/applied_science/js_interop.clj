@@ -6,13 +6,9 @@
 (def reflect-property 'js/goog.reflect.objectProperty)
 
 (def lookup-sentinel 'applied-science.js-interop/lookup-sentinel)
+(def contains?* 'applied-science.js-interop/contains?*)
 
 (def empty-obj '(cljs.core/js-obj))
-
-(defn- BOOL
-  "Returns a ^boolean type-hinted form from a macro"
-  [form]
-  (vary-meta form assoc :tag 'boolean))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -51,10 +47,6 @@
   [ks]
   `(mapv wrap-key ~ks))
 
-(defn- contains? [o wrapped-k]
-  (assert (symbol? o))
-  (BOOL `(~'goog.object/containsKey ~o ~wrapped-k)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Unchecked operations
@@ -85,7 +77,7 @@
          k-sym (gensym "k")]
      `(let [~o ~obj
             ~k-sym ~(wrap-key k o)]
-        (if ~(contains? o k-sym)
+        (if (~contains?* ~o ~k-sym)
           ~(if (dot-sym? k)
              `(~(dot-get k) ~obj)
              `(~'cljs.core/unchecked-get ~obj ~k-sym))
@@ -123,7 +115,7 @@
       `(let [~o ~obj
              ~out ~empty-obj]
          ~@(for [k ks]
-             `(when ~(BOOL (contains? o (wrap-key k o)))
+             `(when (~contains?* ~o ~(wrap-key k o))
                 (unchecked-set ~out ~k
                                (unchecked-get ~o ~k))))
          ~out))

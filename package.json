@@ -5,10 +5,8 @@
     "jar": "clj -A:pack -m mach.pack.alpha.skinny",
     "test": "yarn test1 && yarn test2"
   },
-  "dependencies": {
-    "shadow-cljs": "^2.8.9"
-  },
   "devDependencies": {
-    "source-map-support": "^0.5.10"
+    "source-map-support": "^0.5.10",
+    "shadow-cljs": "^2.8.9"
   }
 }

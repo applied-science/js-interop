@@ -1,4 +1,4 @@
-;; shadow-cljs configuration
+;; shadow-cljs configuration, for development purposes only
 {:source-paths
  ["src/main"
   "src/test"]
@@ -18,11 +18,4 @@
    :ns-regexp        "-test$"
    :autorun          true
    :closure-defines  {applied-science.js-interop-test/advanced? true}
-   :compiler-options {:optimizations :advanced}}
-
-  :shadow-rename
-  {:target           :node-test
-   :output-to        "out/shadow-3.js"
-   :ns-regexp        "rename-test$"
-   :autorun          true
    :compiler-options {:optimizations :advanced}}}}

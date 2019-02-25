@@ -38,7 +38,7 @@ This library is **alpha** and is currently only available as a git dep in `deps.
 ```clj
 :deps
 {applied-science/js-interop {:git/url "https://github.com/appliedsciencestudio/js-interop"
-                             :sha "eea11befcdc7fa64fe8c936685da90fbf4710edf"}}
+                             :sha "e8666ad4680c9642e88ff23fc213b6e4e8bf5d6d"}}
 ```
 
 ## Motivation
@@ -160,6 +160,5 @@ they are suitable for threading.
 To run the tests:
 
 ```clj
-yarn install;
 yarn test;
 ```

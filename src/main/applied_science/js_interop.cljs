@@ -34,6 +34,9 @@
 (defn unchecked-get [obj k]
   (core/unchecked-get obj (wrap-key k)))
 
+(defn ^boolean contains?* [obj k*]
+  (gobj/containsKey obj k*))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Lookups
@@ -89,8 +92,8 @@
   [obj]
   (JSLookup. obj))
 
-(defn contains? ^boolean [obj k]
-  (gobj/containsKey obj (wrap-key k)))
+(defn ^boolean contains? [obj k]
+  (contains?* obj (wrap-key k)))
 
 (defn select-keys*
   "Returns an object containing only those entries in `o` whose key is in `ks`"

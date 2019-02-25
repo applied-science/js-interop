@@ -4,12 +4,12 @@
 
 ;; sample operations, used to inspect generated code.
 ;;
-;; to compile, run:  clj -m cljs.main --optimizations advanced -c applied-science.js-interop-usage
+;; to compile, run: clj -m cljs.main --optimizations advanced -co '{:pseudo-names true}' -c applied-science.js-interop-usage
 ;;
 ;; compiled js will be in:
 ;;
 ;; out/applied_science/js_interop_usage   (uncompressed)
-;; out/main.js                            (advanced-compiled)
+;; out/main.js                            (advanced-compiled with pseudo-names)
 
 (def o #js{})
 (def out #js{})
