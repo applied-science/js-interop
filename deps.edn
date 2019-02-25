@@ -8,6 +8,10 @@
 
  :aliases
  {:test
-  {:extra-deps {olical/cljs-test-runner {:mvn/version "3.5.0"}}
+  {:extra-deps  {olical/cljs-test-runner {:mvn/version "3.5.0"}}
    :extra-paths ["out/test-2/gen"]
-   :main-opts ["-m" "cljs-test-runner.main"]}}}
+   :main-opts   ["-m" "cljs-test-runner.main"]}
+
+  :pack
+  {:extra-deps {pack/pack.alpha {:git/url "https://github.com/juxt/pack.alpha.git"
+                                 :sha     "c93adda9a17a2c4992a70a41b73add0073657758"}}}}}
