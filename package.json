@@ -5,7 +5,7 @@
     "jar": "clj -A:pack -m mach.pack.alpha.skinny",
     "build": "clojure -A:release pom && clojure -A:release jar && cp pom.xml target",
     "deploy": "clojure -A:release deploy",
-    "increment": "clojure -A:release tag",
+    "release": "clojure -A:release tag",
     "test": "yarn test1 && yarn test2"
   },
   "devDependencies": {
