@@ -183,7 +183,7 @@
 ;; Function operations
 
 (defn call
-  "Call function `k` of `obj`, which is bound as `this`.
+  "Call function `k` of `obj`, binding `this` to `obj`.
 
   ```
   (j/call o :someFunction arg1 arg2)
@@ -193,7 +193,7 @@
   (.apply (j/get obj k) obj (to-array args)))
 
 (defn apply
-  "Apply function `k` of `obj`, which is bound as `this`.
+  "Apply function `k` of `obj`, binding `this` to `obj`.
 
   ```
   (j/apply o :someFunction #js [arg1 arg2])
