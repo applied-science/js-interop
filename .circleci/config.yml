@@ -57,12 +57,18 @@ workflows:
   version: 2
   test-and-deploy:
     jobs:
-      - deps-and-test
+      - deps-and-test:
+          filters:
+            tags:
+              only: /.*/
       - build-and-deploy:
           requires:
             - deps-and-test
           filters:
-            tags: { only: /^v.*/ }
+            tags:
+              only: /^v.*/ }
+            branches:
+              ignore: /.*/
 
 
 
