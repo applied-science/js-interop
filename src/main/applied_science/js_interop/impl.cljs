@@ -12,6 +12,11 @@
 (defn ^boolean contains?* [obj k*]
   (gobj/containsKey obj k*))
 
+(defn- get+! [o k*]
+  (if-some [child-obj (unchecked-get o k*)]
+    child-obj
+    (unchecked-set o k* #js{})))
+
 (defn- get-value-by-keys
   "Look up `ks` in `obj`, stopping at any nil"
   [obj ks*]
@@ -42,18 +47,21 @@
                          ^boolean (gobj/containsKey obj k)
                          (doto
                            (unchecked-set k
-                                               (unchecked-get obj k))))) #js {})))
+                                          (unchecked-get obj k))))) #js {})))
 (defn assoc-in*
-  [obj [k* & ks*] v]
-  (let [obj (if (some? obj) obj #js{})]
-    (unchecked-set obj k*
-                        (if ks*
-                          (assoc-in* (unchecked-get obj k*) ks* v)
-                          v))
+  [obj ks* v]
+  (let [obj (if (some? obj) obj #js{})
+        inner-obj (reduce get+! obj (butlast ks*))]
+    (unchecked-set inner-obj (peek ks*) v)
     obj))
 
 (defn update-in*
   [obj ks* f args]
   (let [obj (if (some? obj) obj #js{})
-        old-val (get-value-by-keys obj ks*)]
-    (assoc-in* obj ks* (apply f old-val args))))
+        last-k* (peek ks*)
+        inner-obj (reduce get+! obj (butlast ks*))
+        old-val (unchecked-get inner-obj last-k*)]
+    (unchecked-set inner-obj
+                   last-k*
+                   (apply f old-val args))
+    obj))

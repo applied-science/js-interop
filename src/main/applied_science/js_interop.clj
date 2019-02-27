@@ -22,6 +22,9 @@
 (defn- dot-get [sym]
   (symbol (str ".-" (dot-name sym))))
 
+(defn- dot-call [sym]
+  (symbol (str "." (dot-name sym))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Key conversion
@@ -57,10 +60,10 @@
     `(~(dot-get k) ~obj)
     `(~'cljs.core/unchecked-get ~obj ~(wrap-key k))))
 
-(defmacro unchecked-set [obj & pairs]
+(defmacro unchecked-set [obj & keyvals]
   (let [o (gensym "obj")]
     `(let [~o ~obj]
-       ~@(for [[k v] (partition 2 pairs)]
+       ~@(for [[k v] (partition 2 keyvals)]
            (if (dot-sym? k)
              `(set! (~(dot-get k) ~o) ~v)
              `(~'cljs.core/unchecked-set ~o ~(wrap-key k) ~v)))
@@ -205,9 +208,11 @@
 ;; Function operations
 
 (defmacro call [obj k & args]
-  `(let [obj# ~obj
-         f# (get obj# ~k)]
-     (.call f# obj# ~@args)))
+  (if (dot-sym? k)
+    `(~(dot-call k) ~obj ~@args)
+    `(let [obj# ~obj
+           f# (get obj# ~k)]
+       (.call f# obj# ~@args))))
 
 (defmacro apply [obj k args]
   `(let [obj# ~obj

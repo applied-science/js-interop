@@ -13,8 +13,11 @@
 ;;
 ;; Unchecked operations
 
-(defn unchecked-set [obj k val]
-  (core/unchecked-set obj (impl/wrap-key k) val)
+(defn unchecked-set [obj & keyvals]
+  (loop [[k v & keyvals] keyvals]
+    (core/unchecked-set obj (impl/wrap-key k) v)
+    (when keyvals
+      (recur keyvals)))
   obj)
 
 (defn unchecked-get [obj k]
@@ -42,8 +45,8 @@
    or the not-found value if supplied.
 
    ```
-   (j/get o :k :fallback-value)
-   (j/get o .-k :fallback-value)
+   (j/get-in o [:x :y] :fallback-value)
+   (j/get-in o [.-x .-y] :fallback-value)
    ```"
   ([obj ks]
    (impl/get-in* obj (mapv impl/wrap-key ks)))
@@ -70,7 +73,7 @@
   [obj ks]
   (impl/select-keys* obj (mapv impl/wrap-key ks)))
 
-(deftype JSLookup [obj]
+(deftype ^:no-doc JSLookup [obj]
   ILookup
   (-lookup [_ k]
     (j/get obj k))
@@ -80,7 +83,7 @@
   (-deref [o] obj))
 
 (defn lookup
-  "Returns object which implements ILookup and reads keys from `obj`.
+  "Wraps `obj` with an ILookup implementation, to support reading/destructuring. Does not support renamable keys.
 
   ```
   (let [{:keys [a b c]} (j/lookup o)]
@@ -97,12 +100,12 @@
   "Sets key-value pairs on `obj`, returns `obj`.
 
   ```
-  (j/assoc! o :foo 10)
-  (j/assoc! o .-foo 10)
+  (j/assoc! o :x 10)
+  (j/assoc! o .-x 10)
   ```"
-  [obj & pairs]
+  [obj & keyvals]
   (let [obj (if (some? obj) obj #js{})]
-    (loop [[k v & kvs] pairs]
+    (loop [[k v & kvs] keyvals]
       (unchecked-set obj k v)
       (if kvs
         (recur kvs)
@@ -114,13 +117,11 @@
   exist, objects will be created.
 
   ```
-  (j/assoc-in! o [:foo :goo] 10)
-  (j/assoc-in! o [.-foo .-goo] 10)
+  (j/assoc-in! o [:x :y] 10)
+  (j/assoc-in! o [.-x .-y] 10)
   ```"
-  [obj [k & ks] v]
-  (if ks
-    (assoc! obj k (assoc-in! (j/get obj k) ks v))
-    (assoc! obj k v)))
+  [obj ks v]
+  (impl/assoc-in* obj (mapv impl/wrap-key ks) v))
 
 (defn update!
   "'Updates' a value in a JavaScript object, where k is a key and
@@ -129,8 +130,8 @@
   If the key does not exist, nil is passed as the old value.
 
   ```
-  (j/update! o :foo + 10)
-  (j/update! o .-foo + 10)
+  (j/update! o :a + 10)
+  (j/update! o .-a + 10)
   ```"
   [obj k f & args]
   (let [obj (if (some? obj) obj #js{})
@@ -147,8 +148,8 @@
   created.
 
   ```
-  (j/update-in! o [:foo :goo] + 10)
-  (j/update-in! o [.-foo .-goo] + 10)
+  (j/update-in! o [:x :y] + 10)
+  (j/update-in! o [.-x .-y] + 10)
   ```"
   [obj ks f & args]
   (impl/update-in* obj (mapv impl/wrap-key ks) f args))
@@ -158,24 +159,24 @@
 ;; Array operations
 
 (defn push!
-  "Adds `v` to end of array `a` and returns the mutated array.
+  "Appends `v` to `array` and returns the mutated array.
 
   ```
   (j/push! arr 10)
   ```"
-  [^js a v]
-  (doto a
-    (.push v)))
+  [^js array x]
+  (doto array
+    (.push x)))
 
 (defn unshift!
-  "Adds `v` to the beginning of array `a` and returns the mutated array.
+  "Prepends `v` to `a` and returns the mutated array.
 
   ```
   (j/unshift! arr 10)
   ```"
-  [^js a v]
-  (doto a
-    (.unshift v)))
+  [^js array x]
+  (doto array
+    (.unshift x)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -186,6 +187,7 @@
 
   ```
   (j/call o :someFunction arg1 arg2)
+  (j/call o .-someFunction arg1 arg2)
   ```"
   [obj k & args]
   (.apply (j/get obj k) obj (to-array args)))
@@ -195,6 +197,7 @@
 
   ```
   (j/apply o :someFunction #js [arg1 arg2])
+  (j/apply o .-someFunction #js [arg1 arg2])
   ```"
   [obj k arg-array]
   (.apply (j/get obj k) obj arg-array))
@@ -204,8 +207,8 @@
 ;; Object creation
 
 (defn obj
-  "Create JavaSript object from an even number arguments representing
-   interleaved keys and values. Dot-prefixed symbol keys will be renamable.
+  "Create JavaScript object from an even number arguments representing
+   interleaved keys and values.
 
    ```
    (obj :a 1 :b 2 .-c 3 .-d 4)

@@ -98,6 +98,20 @@
     (j/contains? (j/obj .-bbbbb 20) .-bbbbb)
     true
 
+    (j/assoc! #js{} :x 10)
+    (apply j/assoc! #js{} [:x 10])
+    {:x 10}
+
+    (j/assoc! nil :x 10 :y 20)
+    (apply j/assoc! nil [:x 10 :y 20])
+    {:x 10
+     :y 20}
+
+    (j/unchecked-set #js{} :x 10 :y 20)
+    (apply j/unchecked-set #js{} [:x 10 :y 20])
+    {:x 10
+     :y 20}
+
     ;; assoc-in
     (j/assoc-in! #js {} [:x :y] 10)
     (apply j/assoc-in! [#js {} [:x :y] 10])
@@ -203,9 +217,19 @@
     (apply j/call [#js [10] :indexOf 10])
     0
 
+    (j/call #js [10] .-indexOf 10)
+    (j/call #js [10] .-indexOf 10)
+    0
+
     (j/apply #js[10] :indexOf #js[10])
     (apply j/apply [#js [10] :indexOf #js[10]])
-    0)
+    0
+
+    (j/apply #js[10] .-indexOf #js[10])
+    (j/apply #js[10] .-indexOf #js[10])
+    0
+
+    )
 
 
   (is (-> (j/assoc-in! #js {} [] 10)
@@ -421,6 +445,13 @@
              1))
       (is (= (j/unchecked-get o .-yyyyy) 2))
       (is (= (j/get o .-zzzzz) 3)))
+
+    (is (clj= (j/unchecked-set #js{} :x 10 :y 20)
+              {:x 10
+               :y 20}))
+
+    (is (clj= (j/unchecked-set #js{} .-aaaaaa 10 .-bbbbbb 20)
+              (j/obj .-aaaaaa 10 .-bbbbbb 20)))
 
     (testing "unchecked-get compiles directly to expected syntax"
       (is (= (macroexpand-1 '(applied-science.js-interop/unchecked-get o .-y))

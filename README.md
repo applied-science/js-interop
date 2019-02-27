@@ -1,4 +1,4 @@
-# applied-science/js-interop
+# js-interop ![Clojars](https://img.shields.io/clojars/v/appliedscience/js-interop.svg?color=blue)
 
 A JavaScript-interop library for ClojureScript.
 
