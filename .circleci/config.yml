@@ -2,7 +2,7 @@
 #
 # Check https://circleci.com/docs/2.0/language-javascript/ for more details
 #
-version: 2
+version: 2.1
 
 commands:
   prepare:
@@ -84,10 +84,13 @@ workflows:
     jobs:
       - dependencies:
           filters:
+            tags: { only: /^v.*/ }
             branches: { ignore: /.*/ }
       - test:
           requires:
             - dependencies
+          filters:
+            tags: { only: /^v.*/ }
       - build:
           requires:
             - test

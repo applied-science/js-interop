@@ -23,5 +23,5 @@
     "jar" (apply jar args)
     "pom" (apply pom args)
     "tag" (apply tag args)
-    "deploy" (apply deps-deploy/deploy (concat args [JAR-PATH]))
+    "deploy" (apply deps-deploy/-main (concat ["deploy"] args [JAR-PATH]))
     nil (-main "release")))
