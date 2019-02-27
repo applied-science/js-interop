@@ -3,20 +3,102 @@
 # Check https://circleci.com/docs/2.0/language-javascript/ for more details
 #
 version: 2
-jobs:
-  build:
-    docker:
-      # specify the version you desire here
-      - image: circleci/clojure:tools-deps-1.10.0.411-node-browsers-legacy
 
+commands:
+  prepare:
     steps:
       - checkout
+      - run: git fetch --tags
+      - restore_cache:
+          key: appliedscience.js_interop.{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ checksum "deps.edn" }}
 
+executors:
+  clojure:
+    docker:
+      - image: circleci/clojure:tools-deps-1.10.0.411-node-browsers-legacy
+    environment:
+      JAVA_OPTS: "-Xms512m -Xmx3200m"
+
+jobs:
+  dependencies:
+    executor: clojure
+    steps:
+      - prepare
+      # download and cache dependencies
+      - run: clojure -A:release -Spath
+      - run: clojure -A:test -Spath
+      - save_cache:
+          key: appliedscience.js_interop.{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ checksum "deps.edn" }}
+          paths:
+            - ~/.m2
+            - ~/.gitlibs
+            - .cpcache
+  test:
+    executor: clojure
+    steps:
+      - prepare
       - run:
           name: Test (:optimizations :none)
           command: yarn test1;
       - run:
           name: Test (:optimizations :advanced)
           command: yarn test2;
+
+  build:
+    executor: clojure
+    steps:
+      - prepare
+      - run: clj -A:release pom
+      - run: clj -A:release jar
+      - run: cp pom.xml target
+      - persist_to_workspace:
+          root: target
+          paths:
+            - js_interop.jar
+            - pom.xml
+      - store_artifacts:
+          path: target
+
+  deploy:
+    executor: clojure
+    steps:
+      - prepare
+      - attach_workspace:
+          at: target
+      - run: cp target/pom.xml
+      - run: clojure -A:release deploy
+
+
+
+workflows:
+  version: 2
+  test:
+    jobs:
+      - dependencies:
+          filters:
+            branches: { only: /.*/ }
+      - test:
+          requires:
+            - dependencies
+  deploy:
+    jobs:
+      - dependencies:
+          filters:
+            branches: { ignore: /.*/ }
+      - test:
+          requires:
+            - dependencies
+      - build:
+          requires:
+            - test
+          filters:
+            tags: { only: /^v.*/ }
+      - deploy:
+          requires:
+            - build
+          filters:
+            tags: { only: /^v.*/ }
+
+
 
 

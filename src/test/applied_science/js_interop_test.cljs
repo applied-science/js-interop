@@ -445,4 +445,12 @@
 
       (is (= [(j/get o2 :aaaaa)
               (j/get o2 :bbbbb)]
-             [1 2])))))
+             [1 2])))
+
+    (testing "js-literal behaviour"
+      (let [o #js {:yyyyyy  10
+                   "zzzzzz" 20}]
+        (is (= (j/get o .-yyyyyy) (if advanced? nil 10)))
+        (is (= (j/get o :yyyyyy) 10))
+        (is (= (j/get o .-zzzzzz) (if advanced? nil 20)))
+        (is (= (j/get o :zzzzzz) 20))))))
