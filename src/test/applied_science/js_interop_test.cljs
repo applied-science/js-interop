@@ -90,6 +90,13 @@
     (apply j/get-in [#js [#js {:x 10}] [0 :x]])
     10
 
+    (j/contains? (j/obj :aaaaa 10) :aaaaa)
+    (apply j/contains? (j/obj :aaaaa 10) [:aaaaa])
+    true
+
+    (j/contains? (j/obj .-bbbbb 20) .-bbbbb)
+    (j/contains? (j/obj .-bbbbb 20) .-bbbbb)
+    true
 
     ;; assoc-in
     (j/assoc-in! #js {} [:x :y] 10)
@@ -215,7 +222,7 @@
 
         (is (= (.-hostProperty obj) "x"))
         (is ((if advanced? not= =)
-              (j/get obj :hostProperty) "x")
+             (j/get obj :hostProperty) "x")
             "Unhinted object property is renamed under :advanced optimizations")
         (is (= (j/get obj .-hostProperty)
                "x"))))
@@ -398,7 +405,7 @@
         ;; sinkValue has the further effect of preventing DCE.
         #_(.-some_fn_HH h-inst)
         #_(reflect/sinkValue
-            (.-some_fn_HH h-inst))
+           (.-some_fn_HH h-inst))
         )))
 
   (testing "unchecked operations"
@@ -448,7 +455,7 @@
              [1 2])))
 
     (testing "js-literal behaviour"
-      (let [o #js {:yyyyyy  10
+      (let [o #js {:yyyyyy 10
                    "zzzzzz" 20}]
         (is (= (j/get o .-yyyyyy) (if advanced? nil 10)))
         (is (= (j/get o :yyyyyy) 10))

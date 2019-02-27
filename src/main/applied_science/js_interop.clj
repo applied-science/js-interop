@@ -2,12 +2,11 @@
   (:refer-clojure :exclude [get get-in contains? select-keys assoc! unchecked-get unchecked-set apply])
   (:require [clojure.string :as str]))
 
-(def reflect-property 'js/goog.reflect.objectProperty)
-
-(def lookup-sentinel 'applied-science.js-interop/lookup-sentinel)
-(def contains?* 'applied-science.js-interop/contains?*)
-
-(def empty-obj '(cljs.core/js-obj))
+(def ^:private reflect-property 'js/goog.reflect.objectProperty)
+(def ^:private lookup-sentinel 'applied-science.js-interop.impl/lookup-sentinel)
+(def ^:private contains?* 'applied-science.js-interop.impl/contains?*)
+(def ^:private wrap-key* 'applied-science.js-interop.impl/wrap-key)
+(def ^:private empty-obj '(cljs.core/js-obj))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -26,8 +25,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Key conversion
+;;
+;; Throughout this namespace, k* and ks* refer to keys that have already been wrapped.
 
-(defn wrap-key
+
+(defn- wrap-key
   "Convert key to string at compile time when possible."
   ([k]
    (wrap-key k nil))
@@ -38,10 +40,10 @@
      (keyword? k) (name k)
      (symbol? k) (cond (= (:tag (meta k)) "String") k
                        (dot-sym? k) `(~reflect-property ~(dot-name k) ~obj)
-                       :else `(wrap-key ~k))
-     :else `(wrap-key ~k))))
+                       :else `(~wrap-key* ~k))
+     :else `(~wrap-key* ~k))))
 
-(defn wrap-keys
+(defn- wrap-keys
   "Fallback to wrapping keys at runtime"
   [ks]
   `(mapv wrap-key ~ks))
@@ -96,15 +98,21 @@
      (let [sentinel (gensym "sent")]
        `(let [~sentinel ~lookup-sentinel
               out# ~(reduce
-                      (fn [out k]
-                        `(let [out# ~out]
-                           (if (identical? out# ~sentinel)
-                             ~sentinel
-                             (get out# ~k ~sentinel)))) obj ks)]
+                     (fn [out k]
+                       `(let [out# ~out]
+                          (if (identical? out# ~sentinel)
+                            ~sentinel
+                            (get out# ~k ~sentinel)))) obj ks)]
           (if (= ~sentinel out#)
             ~not-found
             out#)))
-     `(~'applied-science.js-interop/get-in* ~obj ~(wrap-keys ks) ~not-found))))
+     `(~'applied-science.js-interop.impl/get-in* ~obj ~(wrap-keys ks) ~not-found))))
+
+(defmacro contains?
+  [obj k]
+  (let [o (gensym "obj")]
+    `(let [~o ~obj]
+       (~contains?* ~o ~(wrap-key k o)))))
 
 (defmacro select-keys [obj ks]
   (if (vector? ks)
@@ -117,7 +125,7 @@
                 (unchecked-set ~out ~k
                                (unchecked-get ~o ~k))))
          ~out))
-    `(~'applied-science.js-interop/select-keys* ~obj ~(wrap-keys ks))))
+    `(~'applied-science.js-interop.impl/select-keys* ~obj ~(wrap-keys ks))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -146,11 +154,11 @@
 
 ;; core operations
 
-(defmacro assoc! [obj & pairs]
+(defmacro assoc! [obj & keyvals]
   (let [o (gensym "obj")]
     `(let [~o ~obj]
        (-> ~(some-or o empty-obj)
-           ~@(for [[k v] (partition 2 pairs)]
+           ~@(for [[k v] (partition 2 keyvals)]
                `(unchecked-set ~k ~v))))))
 
 (defmacro assoc-in! [obj ks v]
@@ -161,7 +169,7 @@
              inner-obj# ~(get-in+! o (drop-last ks))]
          (unchecked-set inner-obj# ~(last ks) ~v)
          ~o))
-    `(~'applied-science.js-interop/assoc-in* ~obj ~(wrap-keys ks) ~v)))
+    `(~'applied-science.js-interop.impl/assoc-in* ~obj ~(wrap-keys ks) ~v)))
 
 (defmacro update! [obj k f & args]
   (let [o (gensym "obj")]
@@ -178,7 +186,7 @@
              inner-obj# ~(get-in+! o (drop-last ks))]
          (update! inner-obj# ~(last ks) ~f ~@args)
          ~o))
-    `(~'applied-science.js-interop/update-in* ~obj ~(wrap-keys ks) ~f ~(vec args))))
+    `(~'applied-science.js-interop.impl/update-in* ~obj ~(wrap-keys ks) ~f ~(vec args))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
