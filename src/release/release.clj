@@ -14,9 +14,8 @@
 (defn pom [& args]
   (apply garamond/-main (concat GARAMOND-ARGS ["--pom"] args)))
 
-(defn tag [& [increment-type & args]]
-  (let [increment-type (or increment-type "patch")]
-    (apply garamond/-main (concat GARAMOND-ARGS args ["--tag" increment-type]))))
+(defn tag [& args]
+  (apply garamond/-main (concat GARAMOND-ARGS ["--tag"] args)))
 
 (defn -main [command & args]
   (case command
