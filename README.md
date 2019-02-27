@@ -35,12 +35,14 @@ A JavaScript-interop library for ClojureScript.
 
 ## Installation
 
-This library is **alpha** and is currently only available as a git dep in `deps.edn`:
+This library is **alpha** and is currently available on Clojars or as a git dep in `deps.edn`:
+
+`[appliedscience/js-interop "0.1.3"]`
 
 ```clj
 :deps
-{applied-science/js-interop {:git/url "https://github.com/appliedsciencestudio/js-interop"
-                             :sha "c39b30a532481e879fa8c4b25c47bf2407899fc7"}}
+{appliedscience/js-interop {:git/url "https://github.com/appliedsciencestudio/js-interop"
+                            :sha "c39b30a532481e879fa8c4b25c47bf2407899fc7"}}
 ```
 
 ## Motivation
