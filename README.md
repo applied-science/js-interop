@@ -2,7 +2,7 @@
 
 A JavaScript-interop library for ClojureScript.
 
-[![CircleCI](https://circleci.com/gh/appliedsciencestudio/js-interop.svg?style=svg)](https://circleci.com/gh/appliedsciencestudio/js-interop)
+[![CircleCI](https://circleci.com/gh/appliedsciencestudio/js-interop.svg?style=svg)](https://circleci.com/gh/appliedsciencestudio/js-interop) 
 
 ## Features
 
@@ -35,15 +35,17 @@ A JavaScript-interop library for ClojureScript.
 
 ## Installation
 
-This library is **alpha** and is currently available on Clojars or as a git dep in `deps.edn`:
-
-`[appliedscience/js-interop "0.1.3"]`
+This library is **alpha** and is published to Clojars. It has no external dependencies.
 
 ```clj
-:deps
-{appliedscience/js-interop {:git/url "https://github.com/appliedsciencestudio/js-interop"
-                            :sha "c39b30a532481e879fa8c4b25c47bf2407899fc7"}}
+;; lein or boot
+[appliedscience/js-interop "0.1.3"]
 ```
+```clj
+;; deps.edn
+appliedscience/js-interop {:mvn/version "0.1.3"}
+```
+
 
 ## Motivation
 
