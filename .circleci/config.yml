@@ -46,12 +46,8 @@ jobs:
     executor: clojure
     steps:
       - prepare
-      # build jar and pom
-      - run: clojure -A:release pom
-      - run: clojure -A:release jar
-      - run: cp pom.xml target
-      # deploy to clojars
-      - run: clojure -A:release deploy
+      - run: yarn build
+      - run: yarn deploy
 
 workflows:
   version: 2

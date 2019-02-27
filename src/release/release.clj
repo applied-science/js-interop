@@ -4,7 +4,8 @@
             [deps-deploy.deps-deploy :as deps-deploy]))
 
 (def GARAMOND-ARGS ["--group-id" "appliedscience"
-                    "--artifact-id" "js-interop"])
+                    "--artifact-id" "js-interop"
+                    "--scm-url" "https://github.com/appliedsciencestudio/js-interop"])
 
 (def JAR-PATH "target/js_interop.jar")
 
