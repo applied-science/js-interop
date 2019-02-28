@@ -37,11 +37,11 @@ This library is **alpha** and is published to Clojars. It has no external depend
 
 ```clj
 ;; lein or boot
-[appliedscience/js-interop "0.1.10"]
+[appliedscience/js-interop "..."]
 ```
 ```clj
 ;; deps.edn
-appliedscience/js-interop {:mvn/version "0.1.10"}
+appliedscience/js-interop {:mvn/version "..."}
 ```
 
 

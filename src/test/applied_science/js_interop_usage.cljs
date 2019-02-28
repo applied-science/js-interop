@@ -1,6 +1,5 @@
 (ns applied-science.js-interop-usage
-  (:require [applied-science.js-interop :as j]
-            [goog.object :as gobj]))
+  (:require [applied-science.js-interop :as j]))
 
 ;; sample operations, used to inspect generated code.
 ;;
@@ -68,4 +67,3 @@
 
 (js/console.log "___select-keys-2"
                 (j/select-keys o [.-something]))
-
