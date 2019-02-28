@@ -124,12 +124,38 @@ Keys of the form `.-someName` may be renamed by the Closure compiler just like o
 
 ### Wrappers
 
+These utilities provide more convenient access to built-in JavaScript operations.
+
+#### Array operations
+
 Wrapped versions of `push!` and `unshift!` operate on arrays, and return the mutated array.
 
 ```clj
 (j/push! a 10)
 
 (j/unshift! a 10)
+```
+
+#### Function operations
+
+`j/call` and `j/apply` look up a function on an object, and invoke it with `this` bound to the object. These types of calls are particularly hard to get right when externs aren't available because there are no `goog.object/*` utils for this.
+
+
+```clj
+;; before
+(.someFunction o 10)
+
+;; after
+(j/call o :someFunction 10)
+(j/call o .-someFunction 10)
+
+;; before
+(let [f (.-someFunction o)]
+  (.apply f o #js[1 2 3]))
+
+;; after
+(j/apply o :someFunction #js[1 2 3])
+(j/apply o .-someFunction #js[1 2 3])
 ```
 
 ### Threading
