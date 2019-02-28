@@ -1,8 +1,6 @@
-# js-interop ![Clojars](https://img.shields.io/clojars/v/appliedscience/js-interop.svg?color=blue)
+# js-interop ![latest release](https://img.shields.io/github/tag/appliedsciencestudio/js-interop.svg?color=%23309631&label=release) [![tests passing?](https://circleci.com/gh/appliedsciencestudio/js-interop.svg?style=svg)](https://circleci.com/gh/appliedsciencestudio/js-interop)
 
 A JavaScript-interop library for ClojureScript.
-
-[![CircleCI](https://circleci.com/gh/appliedsciencestudio/js-interop.svg?style=svg)](https://circleci.com/gh/appliedsciencestudio/js-interop) 
 
 ## Features
 
