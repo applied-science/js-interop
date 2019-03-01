@@ -195,12 +195,12 @@
 ;;
 ;; Array operations
 
-(defmacro push! [a v]
-  `(doto ~a
+(defmacro push! [array v]
+  `(doto ~array
      (~'.push ~v)))
 
-(defmacro unshift! [a v]
-  `(doto ~a
+(defmacro unshift! [array v]
+  `(doto ~array
      (~'.unshift ~v)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
