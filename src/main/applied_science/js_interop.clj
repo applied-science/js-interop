@@ -49,7 +49,7 @@
 (defn- wrap-keys
   "Fallback to wrapping keys at runtime"
   [ks]
-  `(mapv wrap-key ~ks))
+  `(mapv ~wrap-key* ~ks))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

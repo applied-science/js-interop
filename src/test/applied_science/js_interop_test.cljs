@@ -432,6 +432,14 @@
            (.-some_fn_HH h-inst))
         )))
 
+  (is (clj= (j/select-keys #js{:x 1 :y 2} (do [:x]))
+            {:x 1})
+      "fallback to runtime parsing")
+
+  ;; the following test fails before the code can even load
+  #_(is (thrown? js/Error
+                 (j/select-keys nil (do [.-x]))))
+
   (testing "unchecked operations"
 
     (is (thrown? js/Error
