@@ -65,3 +65,9 @@
                    last-k*
                    (apply f old-val args))
     obj))
+
+(defn extend* [& args]
+  (let [to-ret #js{}
+        args (conj args to-ret)]
+    (apply gobj/extend args)
+    to-ret))

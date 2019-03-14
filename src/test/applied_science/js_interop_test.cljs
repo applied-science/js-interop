@@ -499,4 +499,13 @@
         (is (= (j/get o .-yyyyyy) (if advanced? nil 10)))
         (is (= (j/get o :yyyyyy) 10))
         (is (= (j/get o .-zzzzzz) (if advanced? nil 20)))
-        (is (= (j/get o :zzzzzz) 20))))))
+        (is (= (j/get o :zzzzzz) 20)))))
+
+  (testing "object merging"
+
+    (is (clj= (j/extend #js{:x 1} {:y 1})
+              #js{:x 1 :y 1}))
+    (is (clj= (j/extend #js{:x 1} #js{:x 2})
+              #js{:x 2}))
+    (is (clj= (j/extend #js{:x 1} #js{:y 2 :z 3})
+              #js{:x 1 :y 2 :z 3}))))

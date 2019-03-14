@@ -218,3 +218,13 @@
     (doseq [[k v] (partition 2 keyvals)]
       (j/assoc! obj k v))
     obj))
+
+(defn extend
+  "Combines multiple javascript objects into one
+  ```
+  (j/merge #js{:x 1} #js{:y 1})
+  (j/merge #js{:x 1} #js{:x 2})
+  (j/merge #js{:x 1} #js{:y 2 :z 3})
+  ```"
+  [& ms]
+  (clojure.core/apply impl/extend* (map clj->js ms)))
