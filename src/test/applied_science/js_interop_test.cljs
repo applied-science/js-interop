@@ -565,4 +565,13 @@
                    #js{:x 10}) :hasOwnProperty #js["x"])
 
       (is (= @counter 10)
-          "macros do not evaluate their obj argument more than once"))))
+          "macros do not evaluate their obj argument more than once")))
+
+  (testing "object merging"
+
+    (is (clj= (j/extend #js{:x 1} {:y 1})
+              #js{:x 1 :y 1}))
+    (is (clj= (j/extend #js{:x 1} #js{:x 2})
+              #js{:x 2}))
+    (is (clj= (j/extend #js{:x 1} #js{:y 2 :z 3})
+              #js{:x 1 :y 2 :z 3}))))
