@@ -227,4 +227,7 @@
   (j/merge #js{:x 1} #js{:y 2 :z 3})
   ```"
   [& ms]
-  (clojure.core/apply impl/extend* (map clj->js ms)))
+  (let [to-ret #js{}
+        ms (conj ms to-ret)]
+    (clojure.core/apply goog.object/extend ms)
+    to-ret))

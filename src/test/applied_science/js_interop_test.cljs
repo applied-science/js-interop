@@ -503,7 +503,7 @@
 
   (testing "object merging"
 
-    (is (clj= (j/extend #js{:x 1} {:y 1})
+    (is (not= (j/extend #js{:x 1} {:y 1})
               #js{:x 1 :y 1}))
     (is (clj= (j/extend #js{:x 1} #js{:x 2})
               #js{:x 2}))
