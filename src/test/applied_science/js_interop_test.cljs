@@ -571,6 +571,8 @@
 
     (is (not= (j/extend #js{:x 1} {:y 1})
               #js{:x 1 :y 1}))
+    (is (clj= (j/extend nil #js{:x 2})
+              #js{:x 2}))
     (is (clj= (j/extend #js{:x 1} #js{:x 2})
               #js{:x 2}))
     (is (clj= (j/extend #js{:x 1} #js{:y 2 :z 3})
