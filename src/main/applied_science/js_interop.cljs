@@ -220,14 +220,16 @@
     obj))
 
 (defn extend
-  "Combines multiple javascript objects into one
+  "Combines multiple javascript objects into one, if the first object is `nil` following args will be merged into a new
+  `#js{}`
   ```
-  (j/merge #js{:x 1} #js{:y 1})
-  (j/merge #js{:x 1} #js{:x 2})
-  (j/merge #js{:x 1} #js{:y 2 :z 3})
+  (j/extend nil #js{:y 1})
+  (j/extend #js{:x 1} #js{:y 1})
+  (j/extend #js{:x 1} #js{:x 2})
+  (j/extend #js{:x 1} #js{:y 2 :z 3})
   ```"
-  [& ms]
-  (let [to-ret #js{}
-        ms (conj ms to-ret)]
+  [js-m & js-ms]
+  (let [to-ret (or js-m #js{})
+        ms (conj js-ms to-ret)]
     (clojure.core/apply goog.object/extend ms)
     to-ret))
