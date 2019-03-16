@@ -83,8 +83,8 @@
             ~k-sym ~(wrap-key k o)]
         (if (~contains?* ~o ~k-sym)
           ~(if (dot-sym? k)
-             `(~(dot-get k) ~obj)
-             `(~'cljs.core/unchecked-get ~obj ~k-sym))
+             `(~(dot-get k) ~o)
+             `(~'cljs.core/unchecked-get ~o ~k-sym))
           ~not-found)))))
 
 (defmacro get
