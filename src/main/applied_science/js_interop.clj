@@ -1,5 +1,5 @@
 (ns applied-science.js-interop
-  (:refer-clojure :exclude [get get-in contains? select-keys assoc! unchecked-get unchecked-set apply])
+  (:refer-clojure :exclude [get get-in contains? select-keys assoc! unchecked-get unchecked-set apply extend])
   (:require [clojure.string :as str]))
 
 (def ^:private reflect-property 'js/goog.reflect.objectProperty)
@@ -242,3 +242,7 @@
   `(-> ~empty-obj
        ~@(for [[k v] (partition 2 keyvals)]
            `(assoc! ~k ~v))))
+
+(defmacro extend
+  [obj & objs]
+  `(~'goog.object/extend (or ~obj '(js-obj)) ~@objs))
