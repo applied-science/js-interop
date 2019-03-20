@@ -245,4 +245,6 @@
 
 (defmacro extend
   [obj & objs]
-  `(~'goog.object/extend (or ~obj '(js-obj)) ~@objs))
+  (let [o (gensym "obj")]
+    `(let [~o ~obj]
+       (~'goog.object/extend ~(some-or o empty-obj) ~@objs))))
