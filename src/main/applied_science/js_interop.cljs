@@ -222,7 +222,7 @@
 (defn extend
   "Extends `obj` with the properties of one or more objects, overwriting
    existing properties, moving left to right through `objs`. Returns `obj`.
-   An empty starting object is provided if `obj` is nil."
+   An empty starting object is provided if `obj` is nil.
   ```
   (j/extend o other)
   (j/extend o other #js{:x 1})
