@@ -166,7 +166,7 @@ they are suitable for threading.
 ```clj
 (-> #js {}
     (j/assoc-in! [:x :y] 9)
-    (j/update-in! [:x :y) inc)
+    (j/update-in! [:x :y] inc)
     (j/get-in [:x :y]))
 
 #=> 10
