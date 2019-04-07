@@ -30,9 +30,19 @@
     (apply j/get [nil :x])
     nil
 
+    ;;^same, but undefined
+    (j/get js/undefined :x)
+    (apply j/get [js/undefined :x])
+    nil
+
     ;; get with default
     (j/get nil :x 10)
     (apply j/get [nil :x 10])
+    10
+
+    ;; ^same but undefined
+    (j/get js/undefined :x 10)
+    (apply j/get [js/undefined :x 10])
     10
 
     ;; lookup semantics for default with nil-present
@@ -40,15 +50,24 @@
     (apply j/get [#js{:x nil} :x 10])
     nil
 
-
     ;; get-in, nil root
     (j/get-in nil [:x])
     (apply j/get-in [nil [:x]])
     nil
 
+    ;; ^same but undefined
+    (j/get-in js/undefined [:x])
+    (apply j/get-in [js/undefined [:x]])
+    nil
+
     ;; get-in, nil nested
     (j/get-in #js {:x nil} [:x :y])
     (apply j/get-in [#js {:x nil} [:x :y]])
+    nil
+
+    ;; ^same but undefined
+    (j/get-in #js {:x js/undefined} [:x :y])
+    (apply j/get-in [#js {:x js/undefined} [:x :y]])
     nil
 
     ;; get-in with default

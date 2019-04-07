@@ -10,7 +10,8 @@
           (keyword? k) (name)))
 
 (defn ^boolean contains?* [obj k*]
-  (gobj/containsKey obj k*))
+  (and (some? obj)
+       (js-in k* obj)))
 
 (defn- get+! [o k*]
   (if-some [child-obj (unchecked-get o k*)]
