@@ -202,6 +202,24 @@
   [obj k arg-array]
   (.apply (j/get obj k) obj arg-array))
 
+(defn call-in
+  "Call function nested at `path` with `args`, binding `this` to its parent object.
+
+  ```
+  (j/call-in o [:x :someFunction] arg1 arg2)
+  ```"
+  [obj ks & args]
+  (impl/apply-in* obj (mapv impl/wrap-key ks) (to-array args)))
+
+(defn apply-in
+  "Apply function nested at `path` with `arg-array`, binding `this` to its parent object.
+
+  ```
+  (j/apply-in o [:x :someFunction] arg1 arg2)
+  ```"
+  [obj ks arg-array]
+  (impl/apply-in* obj (mapv impl/wrap-key ks) arg-array))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Object creation

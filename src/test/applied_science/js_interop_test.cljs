@@ -257,6 +257,23 @@
       "Same behaviour as Clojure for assoc-in with empty path.
        JavaScript coerces `nil` to the string 'null'.")
 
+  (let [obj (j/assoc-in! nil [:x :y]
+              (fn [x]
+                (this-as this
+                  [x                                        ;; variables are passed in
+                   (fn? (j/get this :y))])))]               ;; `this` is set to parent
+
+
+    (is (= (j/call-in obj [:x :y] 10)
+           (apply j/call-in [obj [:x :y] 10])
+           [10 true])
+        "call-in")
+
+    (is (= (j/apply-in obj [:x :y] #js[10])
+           (apply j/apply-in [obj [:x :y] #js[10]])
+           [10 true])
+        "apply-in"))
+
   (testing "Host interop keys"
 
     (testing "get"
@@ -513,7 +530,7 @@
              [1 2])))
 
     (testing "js-literal behaviour"
-      (let [o #js {:yyyyyy 10
+      (let [o #js {:yyyyyy  10
                    "zzzzzz" 20}]
         (is (= (j/get o .-yyyyyy) (if advanced? nil 10)))
         (is (= (j/get o :yyyyyy) 10))

@@ -214,10 +214,24 @@
            f# (get obj# ~k)]
        (.call f# obj# ~@args))))
 
-(defmacro apply [obj k args]
+(defmacro call-in [obj ks & args]
+  (if (vector? ks)
+    `(let [parent# (get-in ~obj ~(pop ks))
+           f# (get parent# ~(peek ks))]
+       (.call f# parent# ~@args))
+    `(~'applied-science.js-interop.impl/apply-in* ~obj ~(wrap-keys ks) (cljs.core/array ~@args))))
+
+(defmacro apply [obj k arg-array]
   `(let [obj# ~obj
          f# (get obj# ~k)]
-     (.apply f# obj# ~args)))
+     (.apply f# obj# ~arg-array)))
+
+(defmacro apply-in [obj ks arg-array]
+  (if (vector? ks)
+    `(let [parent# (get-in ~obj ~(pop ks))
+           f# (get parent# ~(peek ks))]
+       (.apply f# parent# ~arg-array))
+    `(~'applied-science.js-interop.impl/apply-in* ~obj ~(wrap-keys ks) ~arg-array)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

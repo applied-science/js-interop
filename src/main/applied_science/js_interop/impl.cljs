@@ -1,5 +1,6 @@
 (ns applied-science.js-interop.impl
-  (:require [goog.object :as gobj]))
+  (:require [goog.object :as gobj])
+  (:require-macros [applied-science.js-interop :as j]))
 
 (def lookup-sentinel #js{})
 
@@ -66,3 +67,9 @@
                    last-k*
                    (apply f old-val args))
     obj))
+
+(defn apply-in*
+  [obj ks* arg-array]
+  (let [parent (get-in* obj (pop ks*))
+        f (gobj/get parent (peek ks*))]
+    (.apply f parent arg-array)))
