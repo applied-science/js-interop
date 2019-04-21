@@ -191,6 +191,13 @@
          ~o))
     `(~'applied-science.js-interop.impl/update-in* ~obj ~(wrap-keys ks) ~f ~(vec args))))
 
+(defmacro extend!
+  [obj & objs]
+  (let [o (gensym "obj")]
+    `(let [~o ~obj]
+       (doto ~(some-or o empty-obj)
+         (~'goog.object/extend ~@objs)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Array operations
@@ -243,8 +250,3 @@
        ~@(for [[k v] (partition 2 keyvals)]
            `(assoc! ~k ~v))))
 
-(defmacro extend
-  [obj & objs]
-  (let [o (gensym "obj")]
-    `(let [~o ~obj]
-       (~'goog.object/extend ~(some-or o empty-obj) ~@objs))))

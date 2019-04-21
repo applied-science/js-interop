@@ -6,7 +6,8 @@
   (:refer-clojure :exclude [get get-in assoc! assoc-in! update! update-in! select-keys contains? unchecked-get unchecked-set apply])
   (:require [goog.reflect]
             [cljs.core :as core]
-            [applied-science.js-interop.impl :as impl])
+            [applied-science.js-interop.impl :as impl]
+            [goog.object :as gobj])
   (:require-macros [applied-science.js-interop :as j]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -154,6 +155,19 @@
   [obj ks f & args]
   (impl/update-in* obj (mapv impl/wrap-key ks) f args))
 
+(defn extend!
+  "Extends `obj` with the properties of one or more objects, overwriting
+   existing properties, moving left to right through `objs`. Returns `obj`.
+   An empty starting object is provided if `obj` is nil.
+  ```
+  (j/extend o other)
+  (j/extend o other #js{:x 1})
+  ```"
+  [obj & objs]
+  (let [obj (if (some? obj) obj #js{})]
+    (core/apply gobj/extend obj objs)
+    obj))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Array operations
@@ -237,16 +251,3 @@
       (j/assoc! obj k v))
     obj))
 
-(defn extend
-  "Extends `obj` with the properties of one or more objects, overwriting
-   existing properties, moving left to right through `objs`. Returns `obj`.
-   An empty starting object is provided if `obj` is nil.
-  ```
-  (j/extend o other)
-  (j/extend o other #js{:x 1})
-  ```"
-  [obj & objs]
-  (let [obj (if (some? obj) obj #js{})
-        args (conj objs obj)]
-    (core/apply goog.object/extend args)
-    obj))

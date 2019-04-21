@@ -74,9 +74,4 @@
         f (gobj/get parent (peek ks*))]
     (.apply f parent arg-array)))
 
-(defn extend* [& args]
-  (let [to-ret #js{}
-        args (conj args to-ret)]
-    (apply gobj/extend args)
-    to-ret))
 
