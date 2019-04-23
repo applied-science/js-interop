@@ -162,11 +162,17 @@
   ```
   (j/extend o other)
   (j/extend o other #js{:x 1})
-  ```"
-  [obj & objs]
-  (let [obj (if (some? obj) obj #js{})]
-    (core/apply gobj/extend obj objs)
-    obj))
+  ```
+  Not IE6-friendly"
+  ([obj] obj)
+  ([obj x]
+   (let [obj (j/some-or obj #js{})]
+     (when (some? x)
+       (doseq [k (js-keys x)]
+         (unchecked-set obj k (unchecked-get x k))))
+     obj))
+  ([obj x & more]
+   (reduce extend! (extend! obj x) more)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

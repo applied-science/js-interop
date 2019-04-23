@@ -52,14 +52,14 @@
                                           (unchecked-get obj k))))) #js {})))
 (defn assoc-in*
   [obj ks* v]
-  (let [obj (if (some? obj) obj #js{})
+  (let [obj (j/some-or obj #js{})
         inner-obj (reduce get+! obj (butlast ks*))]
     (unchecked-set inner-obj (peek ks*) v)
     obj))
 
 (defn update-in*
   [obj ks* f args]
-  (let [obj (if (some? obj) obj #js{})
+  (let [obj (j/some-or obj #js{})
         last-k* (peek ks*)
         inner-obj (reduce get+! obj (butlast ks*))
         old-val (unchecked-get inner-obj last-k*)]

@@ -246,21 +246,7 @@
 
     (j/apply #js[10] .-indexOf #js[10])
     (j/apply #js[10] .-indexOf #js[10])
-    0
-
-    ;; extend
-
-    (j/extend! nil #js{:x 2})
-    (apply j/extend! [nil #js{:x 2}])
-    {:x 2}
-
-    (j/extend! #js{:x 1} #js{:x 2})
-    (apply j/extend! [#js{:x 1} #js{:x 2}])
-    {:x 2}
-
-    (j/extend! #js{:x 1} #js{:y 2 :z 3})
-    (apply j/extend! [#js{:x 1} #js{:y 2 :z 3}])
-    {:x 1 :y 2 :z 3})
+    0)
 
 
   (is (-> (j/assoc-in! #js {} [] 10)
@@ -577,4 +563,24 @@
                    #js{:x 10}) :hasOwnProperty #js["x"])
 
       (is (= @counter 10)
-          "macros do not evaluate their obj argument more than once"))))
+          "macros do not evaluate their obj argument more than once")))
+
+  (testing "extend!"
+
+    ;; extend
+
+    (is (clj= (j/extend! nil #js{:x 2})
+              {:x 2})
+        "extend `nil`")
+
+    (is (clj= (j/extend! #js{:x 1} #js{:x 2})
+              {:x 2})
+        "extend two objects")
+
+    (is (clj= (j/extend! #js{:x 1} #js{:y 2 :z 3} #js{:w 0})
+              {:w 0 :x 1 :y 2 :z 3})
+        "extend three objects")
+
+    (is (clj= (j/extend! #js{:w 0} nil)
+              {:w 0})
+        "extend with nil object")))

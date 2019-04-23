@@ -134,22 +134,22 @@
 ;;
 ;; Mutations
 
-;; helper functions
+;; helpers
 
-(defn- some-or
-  "Like `or` but switches on `some?` instead of truthiness. Eg. will stop at and return `false`."
-  [a b]
-  `(if (nil? ~a) ~b ~a))
+(defmacro some-or
+  "Like `or` but switches on `some?` instead of truthiness."
+  [x y]
+  `(if (some? ~x) ~x ~y))
 
 (defn- get+!
   "Returns `k` of `o`. If nil, sets and returns a new empty child object."
   [o k]
   (let [child (gensym "child")]
     `(let [~child (unchecked-get ~o ~k)]
-       ~(some-or child
-                 `(let [new-child# ~empty-obj]
-                    (unchecked-set ~o ~k new-child#)
-                    new-child#)))))
+       (some-or ~child
+                (let [new-child# ~empty-obj]
+                  (unchecked-set ~o ~k new-child#)
+                  new-child#)))))
 
 (defn- get-in+!
   [o ks]
@@ -160,7 +160,7 @@
 (defmacro assoc! [obj & keyvals]
   (let [o (gensym "obj")]
     `(let [~o ~obj]
-       (-> ~(some-or o empty-obj)
+       (-> (some-or ~o ~empty-obj)
            ~@(for [[k v] (partition 2 keyvals)]
                `(unchecked-set ~k ~v))))))
 
@@ -168,7 +168,7 @@
   (if (vector? ks)
     (let [o (gensym "obj")]
       `(let [~o ~obj
-             ~o ~(some-or o empty-obj)
+             ~o (some-or ~o ~empty-obj)
              inner-obj# ~(get-in+! o (drop-last ks))]
          (unchecked-set inner-obj# ~(last ks) ~v)
          ~o))
@@ -177,7 +177,7 @@
 (defmacro update! [obj k f & args]
   (let [o (gensym "obj")]
     `(let [~o ~obj
-           ~o ~(some-or o empty-obj)]
+           ~o (some-or ~o ~empty-obj)]
        (unchecked-set ~o ~k
                       (~f (unchecked-get ~o ~k) ~@args)))))
 
@@ -185,18 +185,11 @@
   (if (vector? ks)
     (let [o (gensym "obj")]
       `(let [~o ~obj
-             ~o ~(some-or o empty-obj)
+             ~o (some-or ~o ~empty-obj)
              inner-obj# ~(get-in+! o (drop-last ks))]
          (update! inner-obj# ~(last ks) ~f ~@args)
          ~o))
     `(~'applied-science.js-interop.impl/update-in* ~obj ~(wrap-keys ks) ~f ~(vec args))))
-
-(defmacro extend!
-  [obj & objs]
-  (let [o (gensym "obj")]
-    `(let [~o ~obj]
-       (doto ~(some-or o empty-obj)
-         (~'goog.object/extend ~@objs)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
