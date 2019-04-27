@@ -29,6 +29,12 @@ A JavaScript-interop library for ClojureScript.
 
 (j/update! o :a inc)
 (j/update-in! o [:x :y] + 10)
+
+(j/call o :someFn 42)
+(j/apply o :someFn #js[42])
+
+(j/call-in o [:x :someFn] 42)
+(j/apply-in o [:x :someFn] #js[42])
 ```    
 
 ## Installation
@@ -156,6 +162,16 @@ Wrapped versions of `push!` and `unshift!` operate on arrays, and return the mut
 ;; after
 (j/apply o :someFunction #js[1 2 3])
 (j/apply o .-someFunction #js[1 2 3])
+```
+
+`j/call-in` and `j/apply-in` evaluate nested functions, with `this` bound to the function's parent object.
+
+```clj
+(j/call-in o [:x :someFunction] 42)
+(j/call-in o [.-x .-someFunction] 1 2 3)
+
+(j/apply-in o [:x :someFunction] #js[42])
+(j/apply-in o [.-x .-someFunction] #js[1 2 3])
 ```
 
 ### Threading
