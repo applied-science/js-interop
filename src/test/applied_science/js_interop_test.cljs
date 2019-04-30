@@ -520,6 +520,24 @@
               (j/get o .-ddddd)]
              [1 2 3 4])))
 
+
+
+    (is (clj= (j/assoc! nil .-aaa 1 .-bbb 2)
+              (j/obj .-aaa 1 .-bbb 2))
+        "dot keys")
+
+    (is (clj= (j/assoc! nil .-aaa 1 :bbb 2)
+              (j/obj .-aaa 1 :bbb 2))
+        "mixed keys")
+
+    (is (clj= (j/assoc! nil :aaa 1 "bbb" 2)
+              (j/obj :aaa 1 "bbb" 2))
+        "named keys")
+
+    (is (clj= (j/assoc! nil :aaa (* 10 10))
+              (j/obj :aaa (* 10 10))
+              #js{:aaa 100}))
+
     (let [o2 (apply j/obj [:aaaaa 1
                            :bbbbb 2])]
 

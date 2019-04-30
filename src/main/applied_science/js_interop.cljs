@@ -6,8 +6,7 @@
   (:refer-clojure :exclude [get get-in assoc! assoc-in! update! update-in! select-keys contains? unchecked-get unchecked-set apply])
   (:require [goog.reflect]
             [cljs.core :as core]
-            [applied-science.js-interop.impl :as impl]
-            [goog.object :as gobj])
+            [applied-science.js-interop.impl :as impl])
   (:require-macros [applied-science.js-interop :as j]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -256,4 +255,3 @@
     (doseq [[k v] (partition 2 keyvals)]
       (j/assoc! obj k v))
     obj))
-

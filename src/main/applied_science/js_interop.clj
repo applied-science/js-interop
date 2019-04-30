@@ -1,8 +1,10 @@
 (ns applied-science.js-interop
   (:refer-clojure :exclude [get get-in contains? select-keys assoc! unchecked-get unchecked-set apply extend])
-  (:require [clojure.string :as str]))
+  (:require [clojure.core :as core]
+            [clojure.string :as str]))
 
 (def ^:private reflect-property 'js/goog.reflect.objectProperty)
+(def ^:private reflect-object 'js/goog.reflect.object)
 (def ^:private lookup-sentinel 'applied-science.js-interop.impl/lookup-sentinel)
 (def ^:private contains?* 'applied-science.js-interop.impl/contains?*)
 (def ^:private wrap-key* 'applied-science.js-interop.impl/wrap-key)
@@ -237,9 +239,28 @@
 ;;
 ;; Object creation
 
+(defn- literal-obj
+  [keyvals reflected?]
+  (let [keyvals-str (str "({" (->> (map (fn [[k _]]
+                                          (str (if reflected? (dot-name k) (name k)) ":~{}")) keyvals)
+                                   (str/join ",")) "})")
+        expr (list* 'js* keyvals-str (map second keyvals))]
+    (doto (cond->> (vary-meta expr assoc :tag 'object)
+                   reflected?
+                   (list reflect-object)) prn)))
+
 (defmacro obj
   [& keyvals]
-  `(-> ~empty-obj
-       ~@(for [[k v] (partition 2 keyvals)]
-           `(assoc! ~k ~v))))
+  (let [kvs (partition 2 keyvals)
+        k-types (map (comp #(cond (dot-sym? %) :dot-sym
+                                  (or (keyword? %) (string? %)) :name
+                                  :else :other) first) kvs)]
+    (cond (= k-types #{:dot-sym}) (literal-obj kvs true)
+          (= k-types #{:name}) (literal-obj kvs false)
+          :else
+          `(-> ~empty-obj
+               ~@(for [[k v] kvs]
+                   `(assoc! ~k ~v))))))
+
+
 

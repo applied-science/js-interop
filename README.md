@@ -29,7 +29,13 @@ A JavaScript-interop library for ClojureScript.
 
 (j/update! o :a inc)
 (j/update-in! o [:x :y] + 10)
-```    
+
+(j/call o :someFn 42)
+(j/apply o :someFn #js[42])
+
+(j/call-in o [:x :someFn] 42)
+(j/apply-in o [:x :someFn] #js[42])
+```
 
 ## Installation
 
@@ -58,14 +64,14 @@ a source of bugs and does not cover all cases.
 The recommended approach for JS interop when static keys are desired is to use functions in the `goog.object` namespace such
 as `goog.object/get`, `goog.object/getValueByKeys`, and `goog.object/set`. These functions are
 performant and useful but they do not offer a Clojure-centric api. Keys need to be passed in as strings,
-and return values from mutations are not amenable to threading. The `goog.object` namespace has published breaking changes as recently as [2017](https://github.com/google/closure-library/releases/tag/v20170910). 
+and return values from mutations are not amenable to threading. The `goog.object` namespace has published breaking changes as recently as [2017](https://github.com/google/closure-library/releases/tag/v20170910).
 
-One third-party library commonly recommended for JavaScript interop is [cljs-oops](https://github.com/binaryage/cljs-oops). This solves the renaming problem and is highly performant, but the string-oriented api diverges far from Clojure norms. 
+One third-party library commonly recommended for JavaScript interop is [cljs-oops](https://github.com/binaryage/cljs-oops). This solves the renaming problem and is highly performant, but the string-oriented api diverges far from Clojure norms.
 
 Neither library lets you choose to allow a given key to be renamed. For that, you must fall back to host-interop (dot) syntax, which has a different API, so the structure of your code may need to change based on unrelated compiler issues.
 
 The functions in this library work just like their Clojure equivalents, but adapted to a JavaScript context. Static keys are expressed as keywords, renamable keys are expressed via host-interop syntax (eg. `.-someKey`), nested paths are expressed as vectors of keys. Mutation functions are nil-friendly and return the original object, suitable for threading. Usage should be familiar to anyone with Clojure experience.
-    
+
 ### Reading
 
 Reading functions include `get`, `get-in`, `select-keys` and follow Clojure lookup syntax (fallback to default values only when keys are not present)
@@ -115,9 +121,9 @@ Keys of the form `.-someName` may be renamed by the Closure compiler just like o
 
 (j/get-in obj [.-x .-y])
 
-(j/assoc! obj .-a 1) ;; like (set! (.-a obj) 1), but returns `obj`  
-  
-(j/assoc-in! obj [.-x .-y] 10)  
+(j/assoc! obj .-a 1) ;; like (set! (.-a obj) 1), but returns `obj`
+
+(j/assoc-in! obj [.-x .-y] 10)
 
 (j/update! obj .-a inc)
 ```
@@ -156,6 +162,16 @@ Wrapped versions of `push!` and `unshift!` operate on arrays, and return the mut
 ;; after
 (j/apply o :someFunction #js[1 2 3])
 (j/apply o .-someFunction #js[1 2 3])
+```
+
+`j/call-in` and `j/apply-in` evaluate nested functions, with `this` bound to the function's parent object.
+
+```clj
+(j/call-in o [:x :someFunction] 42)
+(j/call-in o [.-x .-someFunction] 1 2 3)
+
+(j/apply-in o [:x :someFunction] #js[42])
+(j/apply-in o [.-x .-someFunction] #js[1 2 3])
 ```
 
 ### Threading
