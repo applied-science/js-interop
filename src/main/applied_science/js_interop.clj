@@ -1,6 +1,7 @@
 (ns applied-science.js-interop
   (:refer-clojure :exclude [get get-in contains? select-keys assoc! unchecked-get unchecked-set apply extend])
   (:require [clojure.core :as core]
+            [clojure.walk :as walk]
             [clojure.string :as str]))
 
 (def ^:private reflect-property 'js/goog.reflect.objectProperty)
@@ -261,6 +262,22 @@
           `(-> ~empty-obj
                ~@(for [[k v] kvs]
                    `(assoc! ~k ~v))))))
+
+;; Literals
+
+(defmacro lit
+  "Returns literal JS forms for Clojure maps (->objects) and vectors (->arrays)."
+  [form]
+  (walk/prewalk
+   (fn [x]
+     (cond (map? x)
+           (list* 'applied-science.js-interop/obj
+                  (core/apply concat x))
+           (vector? x)
+           (list* 'cljs.core/array x)
+           :else x))
+   form))
+
 
 
 
