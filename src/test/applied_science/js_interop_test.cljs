@@ -7,7 +7,8 @@
                                         deftest]]
             [clojure.pprint :refer [pprint]]
             [goog.object :as gobj]
-            [goog.reflect :as reflect]))
+            [goog.reflect :as reflect]
+            [clojure.walk :as walk]))
 
 (goog-define advanced? false)
 
@@ -601,4 +602,13 @@
 
     (is (clj= (j/extend! #js{:w 0} nil)
               {:w 0})
-        "extend with nil object")))
+        "extend with nil object"))
+
+  (testing "lit"
+
+    (is (object? (j/lit {})))
+    (is (array? (j/lit [])))
+    (is (object? (first (j/lit [{}]))))
+    (is (array? (-> (j/lit [{:a [{:b []}]}])
+                    (j/get-in [0 :a 0 :b]))))))
+
