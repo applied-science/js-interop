@@ -611,4 +611,3 @@
     (is (object? (first (j/lit [{}]))))
     (is (array? (-> (j/lit [{:a [{:b []}]}])
                     (j/get-in [0 :a 0 :b]))))))
-

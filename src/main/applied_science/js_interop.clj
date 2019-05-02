@@ -2,10 +2,10 @@
   (:refer-clojure :exclude [get get-in contains? select-keys assoc! unchecked-get unchecked-set apply extend])
   (:require [clojure.core :as core]
             [clojure.walk :as walk]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [clojure.set :as set]))
 
 (def ^:private reflect-property 'js/goog.reflect.objectProperty)
-(def ^:private reflect-object 'js/goog.reflect.object)
 (def ^:private lookup-sentinel 'applied-science.js-interop.impl/lookup-sentinel)
 (def ^:private contains?* 'applied-science.js-interop.impl/contains?*)
 (def ^:private wrap-key* 'applied-science.js-interop.impl/wrap-key)
@@ -241,29 +241,29 @@
 ;; Object creation
 
 (defn- literal-obj
-  [keyvals reflected?]
+  [keyvals]
   (let [keyvals-str (str "({" (->> (map (fn [[k _]]
-                                          (str (if reflected? (dot-name k) (name k)) ":~{}")) keyvals)
-                                   (str/join ",")) "})")
-        expr (list* 'js* keyvals-str (map second keyvals))]
-    (doto (cond->> (vary-meta expr assoc :tag 'object)
-                   reflected?
-                   (list reflect-object)) prn)))
+                                          (str (if (dot-sym? k)
+                                                 (dot-name k) ;; without quotes, can be renamed by compiler
+                                                 (str \" (name k) \"))
+                                               ":~{}")) keyvals)
+                                   (str/join ",")) "})")]
+    (vary-meta (list* 'js* keyvals-str (map second keyvals))
+               assoc :tag 'object)))
 
 (defmacro obj
   [& keyvals]
   (let [kvs (partition 2 keyvals)
-        k-types (map (comp #(cond (dot-sym? %) :dot-sym
-                                  (or (keyword? %) (string? %)) :name
-                                  :else :other) first) kvs)]
-    (cond (= k-types #{:dot-sym}) (literal-obj kvs true)
-          (= k-types #{:name}) (literal-obj kvs false)
-          :else
-          `(-> ~empty-obj
-               ~@(for [[k v] kvs]
-                   `(assoc! ~k ~v))))))
+        k-types (set (map (comp #(cond (dot-sym? %) :dot-sym
+                                       (or (keyword? %) (string? %)) :static-name
+                                       :else :other) first) kvs))]
+    (if (set/subset? k-types #{:dot-sym :static-name})
+      (literal-obj kvs)
+      `(-> ~empty-obj
+           ~@(for [[k v] kvs]
+               `(assoc! ~k ~v))))))
 
-;; Literals
+;; Nested literals (maps/vectors become objects/arrays)
 
 (defmacro lit
   "Returns literal JS forms for Clojure maps (->objects) and vectors (->arrays)."
@@ -277,7 +277,3 @@
            (list* 'cljs.core/array x)
            :else x))
    form))
-
-
-
-

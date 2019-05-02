@@ -4,7 +4,7 @@
 (ns applied-science.js-interop
   "A JavaScript-interop library for ClojureScript."
   (:refer-clojure :exclude [get get-in assoc! assoc-in! update! update-in! select-keys contains? unchecked-get unchecked-set apply])
-  (:require [goog.reflect]
+  (:require [goog.reflect :as reflect]
             [cljs.core :as core]
             [applied-science.js-interop.impl :as impl])
   (:require-macros [applied-science.js-interop :as j]))
