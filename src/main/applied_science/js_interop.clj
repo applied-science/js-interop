@@ -2,8 +2,7 @@
   (:refer-clojure :exclude [get get-in contains? select-keys assoc! unchecked-get unchecked-set apply extend])
   (:require [clojure.core :as core]
             [clojure.walk :as walk]
-            [clojure.string :as str]
-            [clojure.set :as set]))
+            [clojure.string :as str]))
 
 (def ^:private reflect-property 'js/goog.reflect.objectProperty)
 (def ^:private lookup-sentinel 'applied-science.js-interop.impl/lookup-sentinel)
@@ -240,6 +239,11 @@
 ;;
 ;; Object creation
 
+
+(comment
+ (defn infer-tag [env form]
+   (ana/infer-tag env (ana/no-warn (ana/analyze env form)))))
+
 (defn- literal-obj
   [keyvals]
   (let [keyvals-str (str "({" (->> (map (fn [[k _]]
@@ -253,15 +257,14 @@
 
 (defmacro obj
   [& keyvals]
-  (let [kvs (partition 2 keyvals)
-        k-types (set (map (comp #(cond (dot-sym? %) :dot-sym
-                                       (or (keyword? %) (string? %)) :static-name
-                                       :else :other) first) kvs))]
-    (if (set/subset? k-types #{:dot-sym :static-name})
+  (let [kvs (partition 2 keyvals)]
+    (if (every? #(or (keyword? %)
+                     (string? %)
+                     (dot-sym? %)) (map first kvs))
       (literal-obj kvs)
       `(-> ~empty-obj
            ~@(for [[k v] kvs]
-               `(assoc! ~k ~v))))))
+               `(unchecked-set ~k ~v))))))
 
 ;; Nested literals (maps/vectors become objects/arrays)
 
