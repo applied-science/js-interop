@@ -15,6 +15,7 @@ A JavaScript-interop library for ClojureScript.
 
 (def o #js{ …some javascript object… })
 
+;; Read
 (j/get o :x)
 (j/get o .-x "fallback-value")
 (j/get-in o [:x :y])
@@ -23,6 +24,7 @@ A JavaScript-interop library for ClojureScript.
 (let [{:keys [x]} (j/lookup o)]
   ...)
 
+;; Write
 (j/assoc! o :a 1)
 (j/assoc-in! o [:x :y] 100)
 (j/assoc-in! o [.-x .-y] 100)
@@ -30,11 +32,16 @@ A JavaScript-interop library for ClojureScript.
 (j/update! o :a inc)
 (j/update-in! o [:x :y] + 10)
 
+;; Call functions
 (j/call o :someFn 42)
 (j/apply o :someFn #js[42])
 
 (j/call-in o [:x :someFn] 42)
 (j/apply-in o [:x :someFn] #js[42])
+
+;; Create
+(j/obj :a 1 .-b 2)
+(j/lit {:a 1 .-b [2 3 4]})
 ```
 
 ## Installation
@@ -172,6 +179,16 @@ Wrapped versions of `push!` and `unshift!` operate on arrays, and return the mut
 
 (j/apply-in o [:x :someFunction] #js[42])
 (j/apply-in o [.-x .-someFunction] #js[1 2 3])
+```
+
+### Object/array creation 
+
+`j/obj` returns a literal js object for provided keys/values, `j/lit` returns literal js objects/arrays for an arbitrarily nested structure of maps/vectors.
+
+```clj
+(j/obj :a 1 .-b 2) ;; can use renamable keys
+(j/lit {:a 1 .-b [2 3]})
+
 ```
 
 ### Threading
