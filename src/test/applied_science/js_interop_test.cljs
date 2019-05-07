@@ -514,17 +514,24 @@
     (let [o (j/obj :aaaaa 1
                    :bbbbb 2
                    .-ccccc 3
-                   .-ddddd 4)]
+                   .-ddddd 4
+                   .-hello-there? 5)]
+
       (is (= [(j/get o :aaaaa)
               (j/get o :bbbbb)
               (j/get o .-ccccc)
-              (j/get o .-ddddd)]
-             [1 2 3 4])))
+              (j/get o .-ddddd)
+              (j/get o .-hello-there?)]
+             [1 2 3 4 5])))
 
 
 
-    (is (clj= (j/assoc! nil .-aaa 1 .-bbb 2)
-              (j/obj .-aaa 1 .-bbb 2))
+    (is (clj= (j/assoc! nil .-aaa 1 .-bbb? 2)
+              (j/obj .-aaa 1 .-bbb? 2)
+              (let [obj #js{}]
+                (set! (.-aaa obj) 1)
+                (set! (.-bbb? obj) 2)
+                obj))
         "dot keys")
 
     (is (clj= (j/assoc! nil .-aaa 1 :bbb 2)

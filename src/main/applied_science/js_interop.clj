@@ -1,6 +1,7 @@
 (ns applied-science.js-interop
   (:refer-clojure :exclude [get get-in contains? select-keys assoc! unchecked-get unchecked-set apply extend])
   (:require [clojure.core :as core]
+            [cljs.compiler :as comp]
             [clojure.walk :as walk]
             [clojure.string :as str]))
 
@@ -44,7 +45,7 @@
          (number? k)) k
      (keyword? k) (name k)
      (symbol? k) (cond (= (:tag (meta k)) "String") k
-                       (dot-sym? k) `(~reflect-property ~(dot-name k) ~obj)
+                       (dot-sym? k) `(~reflect-property ~(comp/munge (dot-name k)) ~obj)
                        :else `(~wrap-key* ~k))
      :else `(~wrap-key* ~k))))
 
@@ -248,7 +249,7 @@
   [keyvals]
   (let [keyvals-str (str "({" (->> (map (fn [[k _]]
                                           (str (if (dot-sym? k)
-                                                 (dot-name k) ;; without quotes, can be renamed by compiler
+                                                 (comp/munge (dot-name k)) ;; without quotes, can be renamed by compiler
                                                  (str \" (name k) \"))
                                                ":~{}")) keyvals)
                                    (str/join ",")) "})")]
