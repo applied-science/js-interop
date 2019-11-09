@@ -199,8 +199,10 @@
 ;; Array operations
 
 (defmacro push! [array v]
-  `(doto ~array
-     (~'.push ~v)))
+  (let [sym (with-meta (gensym "array") {:tag 'js/Array})]
+    `(let [~sym ~array]
+       (~'.push ~sym ~v)
+       ~sym)))
 
 (defmacro unshift! [array v]
   `(doto ~array

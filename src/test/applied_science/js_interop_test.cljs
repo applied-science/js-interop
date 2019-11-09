@@ -10,6 +10,8 @@
             [goog.reflect :as reflect]
             [clojure.walk :as walk]))
 
+(set! *warn-on-infer* true)
+
 (goog-define advanced? false)
 
 (def advanced-= (if advanced? = not=))
@@ -249,6 +251,8 @@
     (j/apply #js[10] .-indexOf #js[10])
     0)
 
+  ;; added to check for warning
+  (is (clj= ["x"] (j/push! @(atom #js[]) "x")))
 
   (is (-> (j/assoc-in! #js {} [] 10)
           (j/get :null)
@@ -448,7 +452,7 @@
       ;; this test represents _weird behaviour_,
       ;; GCC has inlined `some_fn_H`
       (let [property-name (reflect/objectProperty "some_fn_HH" h-inst)
-            some_fn2 (gobj/get h-inst property-name)]
+            ^js/Function some_fn2 (gobj/get h-inst property-name)]
 
         (is (= (.some_fn_HH h-inst "y")
                ["x" "y"]))
