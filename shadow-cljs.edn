@@ -3,8 +3,7 @@
  ["src/main"
   "src/test"]
 
- :dependencies
- []
+ :deps {:aliases [:shadow]}
 
  :builds
  {:test1

@@ -1,5 +1,6 @@
 (ns applied-science.js-interop-test
   (:require [applied-science.js-interop :as j]
+            [applied-science.js-interop.alpha.destructure :as d]
             [clojure.core :as core]
             [cljs.test :as test :refer [is
                                         are
@@ -7,8 +8,7 @@
                                         deftest]]
             [clojure.pprint :refer [pprint]]
             [goog.object :as gobj]
-            [goog.reflect :as reflect]
-            [clojure.walk :as walk]))
+            [goog.reflect :as reflect]))
 
 (set! *warn-on-infer* true)
 
@@ -468,7 +468,7 @@
         ;; sinkValue has the further effect of preventing DCE.
         #_(.-some_fn_HH h-inst)
         #_(reflect/sinkValue
-           (.-some_fn_HH h-inst))
+            (.-some_fn_HH h-inst))
         )))
 
   (is (clj= (j/select-keys #js{:x 1 :y 2} (do [:x]))
@@ -558,7 +558,7 @@
              [1 2])))
 
     (testing "js-literal behaviour"
-      (let [o #js {:yyyyyy  10
+      (let [o #js {:yyyyyy 10
                    "zzzzzz" 20}]
         (is (= (j/get o .-yyyyyy) (if advanced? nil 10)))
         (is (= (j/get o :yyyyyy) 10))
@@ -621,4 +621,58 @@
     (is (array? (j/lit [])))
     (is (object? (first (j/lit [{}]))))
     (is (array? (-> (j/lit [{:a [{:b []}]}])
-                    (j/get-in [0 :a 0 :b]))))))
+                    (j/get-in [0 :a 0 :b])))))
+
+  (testing "destructure"
+
+    ;; records store their fields, so we can recognize them.
+    ;; only defined fields use direct lookup.
+    (defrecord Hello [record-field])
+
+    (is (= :record-field
+           (d/let [{:keys [record-field]} ^Hello (Hello. :record-field)]
+             record-field)))
+
+    (is (= 10 ((d/fn [^js {:keys [aaaaa]}] aaaaa)
+               #js{:aaaaa 10}))
+        "js-destructure with ^js")
+    (is (= nil ((d/fn [{:keys [aaaaa]}] aaaaa)
+                #js{:aaaaa 10}))
+        "No js-destructure without ^js")
+    (is (= nil ((d/fn [^js {:keys [aaaaa]}] aaaaa)
+                {:aaaaa 10}))
+        "js-destructure does not read from map")
+
+    (d/defn multi-arity
+      ([^js {:keys [aaaaa]}]
+       aaaaa)
+      ([{clj :aaaaa} ^js {js :aaaaa}]
+       [clj js]))
+
+
+    (let [obj #js{:aaaaa 10}]
+      (and (is (= 10 (multi-arity obj))
+               "Multi-arity defn, js-destructure")
+           (is (= [nil 10] (multi-arity obj obj))
+               "Multi-arity defn, dual-distructure")))
+
+
+
+    (is (= [10 nil] ((d/fn [^js [_ a b]] [a b])
+                     #js[0 10]))
+        "array js-destructure")
+    (is (= 10 ((d/fn [[_ a]] a)
+               #js[0 10]))
+        "nth destructure")
+
+    (d/let [^js {:keys [aaaaa]} #js{:aaaaa 10}]
+      (is (= 10 aaaaa)
+          "let js-destructure, static key"))
+
+    (d/let [^js {:syms [aaaaa]} (j/obj .-aaaaa 10)]
+      (is (= 10 aaaaa)
+          "let js-destructure, renamable key"))
+
+    (d/let [^js {:keys [aaaaa]} (j/obj .-aaaaa 10)]
+      (is (advanced-not= 10 aaaaa)
+          "let js-destructure, static key does not find renamed property"))))

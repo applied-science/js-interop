@@ -61,7 +61,7 @@
                                                 gfirst
                                                 ;; swap in array access
                                                 (if js?
-                                                  (list 'cljs.core/aget value n) ; TODO - checked-aget
+                                                  (list 'cljs.core/aget value n)
                                                   (list `nth value n nil))))
                              (inc n)
                              (next bs)
@@ -113,11 +113,13 @@
                         bb)
 
                 ;; identify renamable keys and xform
-                bk (let [renamable-k? (let [k (dequote bk)]
-                                        (or (and js? (symbol? k))
-                                            ;; renamable record
-                                            (contains? record-fields (symbol (name k)))))]
-                     (cond-> bk renamable-k? (dot-sym)))
+                bk (let [k (dequote bk)]
+                     (if (or (and js? (symbol? k))
+                             ;; renamable record
+                             (contains? record-fields (symbol (name k))))
+                       (dot-sym k)
+                       bk))
+
                 ;; swap in js-interop/get
                 getf (if (or js? (dot-sym? bk))
                        'applied-science.js-interop/get
@@ -138,8 +140,8 @@
     ([out binding-form value]
      (cond
        (symbol? binding-form) (conj out binding-form value)
-       (vector? binding-form) (process-vec out binding-form value (= 'js (get-meta value :tag)))
-       (map? binding-form) (process-map out binding-form value (= 'js (get-meta value :tag)))
+       (vector? binding-form) (process-vec out binding-form value (= 'js (get-meta binding-form :tag)))
+       (map? binding-form) (process-map out binding-form value (= 'js (get-meta binding-form :tag)))
        :else (throw #?(:clj  (new Exception (str "Unsupported binding form: " binding-form))
                        :cljs (new js/Error (str "Unsupported binding form: " binding-form)))))))
 
@@ -174,9 +176,7 @@
                         :body (s/* any?))))
 
   (s/def ::function-args
-    (s/cat :fn-name (s/? simple-symbol?)
-           :docstring (s/? string?)
-           :meta (s/? map?)
+    (s/cat :fn-prelude (s/* #(and (not (vector? %)) (not (list? %))))
            :fn-tail (s/alt :arity-1 ::argv+body
                            :arity-n (s/cat :bodies (s/+ (s/spec ::argv+body))
                                            :attr-map (s/? map?)))))
@@ -214,7 +214,7 @@
               (recur (next params) (conj new-params gparam)
                      (conj lets (first params) gparam))))
           [new-params
-           `[(let ~lets
+           `[(~'applied-science.js-interop.alpha.destructure/let ~lets
                ~@body)]]))))
 
   (core/defn destructure-fn-args [args]
