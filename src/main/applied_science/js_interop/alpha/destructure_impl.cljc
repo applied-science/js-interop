@@ -9,141 +9,138 @@
 
 (macros/deftime
 
-  (def ^:dynamic *env* nil)
-
   (defn- dequote [x]
     (if (and (list? x) (= 'quote (first x)))
       (second x)
       x))
 
-  (defn- dot-sym? [x]
+  (defn- dot-access? [x]
     (and (symbol? x) (str/starts-with? (name x) ".-")))
 
-  (defn- dot-sym [s]
+  (defn- dot-access [s]
     (symbol (str/replace-first (name s) #"^(?:\.\-)?" ".-")))
 
-  (defn- get-meta [x k]
-    (when #?(:cljs (satisfies? IMeta x) :clj true)
-      (get (meta x) k)))
+  (core/defn destructure* [bindings]
+    ;; slightly modified from cljs.core/destructure
+    (core/let [bents (partition 2 bindings)
+               pb (core/fn pb [bvec b v]
+                    (core/let [js? (= 'js (:tag (meta b))) ;; read js tag from binding form (not value)
+                               pvec
+                               (core/fn [bvec b val]
+                                 (core/let [gvec (gensym "vec__")
+                                            gseq (gensym "seq__")
+                                            gfirst (gensym "first__")
+                                            has-rest (some #{'&} b)]
+                                   (core/loop [ret (core/let [ret (conj bvec gvec val)]
+                                                     (if has-rest
+                                                       (conj ret gseq (core/list `seq gvec))
+                                                       ret))
+                                               n 0
+                                               bs b
+                                               seen-rest? false]
+                                     (if (seq bs)
+                                       (core/let [firstb (first bs)]
+                                         (core/cond
+                                           (= firstb '&) (recur (pb ret (second bs) gseq)
+                                                                n
+                                                                (nnext bs)
+                                                                true)
+                                           (= firstb :as) (pb ret (second bs) gvec)
+                                           :else (if seen-rest?
+                                                   (throw #?(:clj  (new Exception "Unsupported binding form, only :as can follow & parameter")
+                                                             :cljs (new js/Error "Unsupported binding form, only :as can follow & parameter")))
+                                                   (recur (pb (if has-rest
+                                                                (conj ret
+                                                                      gfirst `(first ~gseq)
+                                                                      gseq `(next ~gseq))
+                                                                ret)
+                                                              firstb
+                                                              (if has-rest
+                                                                gfirst
+                                                                (if js?
+                                                                  (list 'cljs.core/aget v n)
+                                                                  (list `nth v n nil))))
+                                                          (core/inc n)
+                                                          (next bs)
+                                                          seen-rest?))))
+                                       ret))))
+                               pmap
+                               (core/fn [bvec b v]
+                                 (core/let [record-fields (some-> (inf/infer-type v)
+                                                                  (inf/record-fields))
+                                            gmap (gensym "map__")
+                                            defaults (:or b)]
+                                   (core/loop [ret (core/-> bvec (conj gmap) (conj v)
+                                                            (conj gmap) (conj `(if (core/implements? core/ISeq ~gmap) (apply cljs.core/hash-map ~gmap) ~gmap))
+                                                            ((core/fn [ret]
+                                                               (if (:as b)
+                                                                 (conj ret (:as b) gmap)
+                                                                 ret))))
+                                               bes (core/let [transforms
+                                                              (reduce
+                                                                (core/fn [transforms mk]
+                                                                  (if (core/keyword? mk)
+                                                                    (core/let [mkns (namespace mk)
+                                                                               mkn (name mk)]
+                                                                      (core/cond (= mkn "keys") (assoc transforms mk #(keyword (core/or mkns (namespace %)) (name %)))
+                                                                                 (= mkn "syms") (assoc transforms mk #(core/list `quote (symbol (core/or mkns (namespace %)) (name %))))
+                                                                                 (= mkn "strs") (assoc transforms mk core/str)
+                                                                                 :else transforms))
+                                                                    transforms))
+                                                                {}
+                                                                (keys b))]
+                                                     (reduce
+                                                       (core/fn [bes entry]
+                                                         (reduce #(assoc %1 %2 ((val entry) %2))
+                                                                 (dissoc bes (key entry))
+                                                                 ((key entry) bes)))
+                                                       (dissoc b :as :or)
+                                                       transforms))]
+                                     (if (seq bes)
+                                       (core/let [bb (key (first bes))
+                                                  bk (val (first bes))
 
-  (declare process-binding)
+                                                  ;; convert renamable keys to .-dotFormat
+                                                  bk (let [k (dequote bk)]
+                                                       (if (or (and js? (symbol? k))
+                                                               ;; renamable record
+                                                               (contains? record-fields (symbol (name k))))
+                                                         (dot-access k)
+                                                         bk))
+                                                  ;; use js-interop for ^js-tagged bindings & other renamable keys
+                                                  getf (if (or js? (dot-access? bk))
+                                                         'applied-science.js-interop/get
+                                                         'cljs.core/get)
 
-  (defn- process-vec [out bind-as value js?]
-    (let [gvec (gensym "vec__")
-          gseq (gensym "seq__")
-          gfirst (gensym "first__")
-          has-rest (some #{'&} bind-as)]
-      (loop [ret (let [ret (conj out gvec value)]
-                   (if has-rest
-                     (conj ret gseq (list `seq gvec))
-                     ret))
-             n 0
-             bs bind-as
-             seen-rest? false]
-        (if (seq bs)
-          (let [firstb (first bs)]
-            (cond
-              (= firstb '&) (recur (process-binding ret (second bs) gseq)
-                                   n
-                                   (nnext bs)
-                                   true)
-              (= firstb :as) (process-binding ret (second bs) gvec)
-              :else (if seen-rest?
-                      (throw #?(:clj  (new Exception "Unsupported binding form, only :as can follow & parameter")
-                                :cljs (new js/Error "Unsupported binding form, only :as can follow & parameter")))
-                      (recur (process-binding (if has-rest
-                                                (conj ret
-                                                      gfirst `(first ~gseq)
-                                                      gseq `(next ~gseq))
-                                                ret)
-                                              firstb
-                                              (if has-rest
-                                                gfirst
-                                                ;; swap in array access
-                                                (if js?
-                                                  (list 'cljs.core/aget value n)
-                                                  (list `nth value n nil))))
-                             (inc n)
-                             (next bs)
-                             seen-rest?))))
-          ret))))
-
-  (defn- process-map [out {:as bind-as
-                           defaults :or
-                           alias :as} value js?]
-    (let [record-fields (some-> (inf/infer-type *env* value)
-                                (inf/record-fields))
-          gmap (gensym "map__")]
-      (loop [ret (-> out
-                     (conj gmap value)
-                     (cond-> (not js?)
-                             (conj gmap `(if ~(macros/case :clj `(seq? ~gmap)
-                                                           :cljs `(implements? ISeq ~gmap))
-                                           (apply hash-map ~gmap) ~gmap)))
-                     (cond-> alias (conj alias gmap)))
-             bes (let [transforms
-                       (reduce
-                         (fn [transforms mk]
-                           (if (keyword? mk)
-                             (let [mkns (namespace mk)
-                                   mkn (name mk)]
-                               (if-some [transform (case mkn
-                                                     "keys" #(keyword (or mkns (namespace %)) (name %))
-                                                     "syms" #(list `quote (symbol (or mkns (namespace %)) (name %)))
-                                                     "strs" str
-                                                     nil)]
-                                 (assoc transforms mk transform)
-                                 transforms))
-                             transforms))
-                         {}
-                         (keys bind-as))]
-                   (reduce
-                     (fn [bes entry]
-                       (reduce #(assoc %1 %2 ((val entry) %2))
-                               (dissoc bes (key entry))
-                               ((key entry) bes)))
-                     (-> bind-as (dissoc :as :or))
-                     transforms))]
-        (if (seq bes)
-          (let [bb (key (first bes))
-                bk (val (first bes))
-                local (if #?(:clj  (core/instance? clojure.lang.Named bb)
-                             :cljs (cljs.core/implements? INamed bb))
-                        (with-meta (symbol nil (name bb)) (meta bb))
-                        bb)
-
-                ;; identify renamable keys and xform
-                bk (let [k (dequote bk)]
-                     (if (or (and js? (symbol? k))
-                             ;; renamable record
-                             (contains? record-fields (symbol (name k))))
-                       (dot-sym k)
-                       bk))
-
-                ;; swap in js-interop/get
-                getf (if (or js? (dot-sym? bk))
-                       'applied-science.js-interop/get
-                       `get)
-
-                bv (if (contains? defaults local)
-                     (list getf gmap bk (defaults local))
-                     (list getf gmap bk))]
-            (recur (if (ident? bb)
-                     (-> ret (conj local bv))
-                     (process-binding ret bb bv))
-                   (next bes)))
-          ret))))
-
-  (defn- process-binding
-    ([out pair]
-     (process-binding out (first pair) (second pair)))
-    ([out binding-form value]
-     (cond
-       (symbol? binding-form) (conj out binding-form value)
-       (vector? binding-form) (process-vec out binding-form value (= 'js (get-meta binding-form :tag)))
-       (map? binding-form) (process-map out binding-form value (= 'js (get-meta binding-form :tag)))
-       :else (throw #?(:clj  (new Exception (str "Unsupported binding form: " binding-form))
-                       :cljs (new js/Error (str "Unsupported binding form: " binding-form)))))))
+                                                  local (if #?(:clj  (core/instance? clojure.lang.Named bb)
+                                                               :cljs (cljs.core/implements? INamed bb))
+                                                          (with-meta (symbol nil (name bb)) (meta bb))
+                                                          bb)
+                                                  bv (if (contains? defaults local)
+                                                       (core/list getf gmap bk (defaults local))
+                                                       (core/list getf gmap bk))]
+                                         (recur
+                                           (if (core/or (core/keyword? bb) (core/symbol? bb)) ;(ident? bb)
+                                             (core/-> ret (conj local bv))
+                                             (pb ret bb bv))
+                                           (next bes)))
+                                       ret))))]
+                      (core/cond
+                        (core/symbol? b) (core/-> bvec (conj (if (namespace b) (symbol (name b)) b)) (conj v))
+                        (core/keyword? b) (core/-> bvec (conj (symbol (name b))) (conj v))
+                        (vector? b) (pvec bvec b v)
+                        (map? b) (pmap bvec b v)
+                        :else (throw
+                                #?(:clj  (new Exception (core/str "Unsupported binding form: " b))
+                                   :cljs (new js/Error (core/str "Unsupported binding form: " b)))))))
+               process-entry (core/fn [bvec b] (pb bvec (first b) (second b)))]
+      (if (every? core/symbol? (map first bents))
+        bindings
+        (core/if-let [kwbs (seq (filter #(core/keyword? (first %)) bents))]
+          (throw
+            #?(:clj  (new Exception (core/str "Unsupported binding key: " (ffirst kwbs)))
+               :cljs (new js/Error (core/str "Unsupported binding key: " (ffirst kwbs)))))
+          (reduce process-entry [] bents)))))
 
   (defn destructure
     "Destructure with direct array and object access on records, types, and ^js hinted values.
@@ -158,8 +155,8 @@
     and array access to `aget`."
     [env bindings]
     (if (:ns env)                                           ;; cljs target
-      (binding [*env* env]
-        (reduce process-binding [] (partition 2 bindings)))
+      (binding [inf/*&env* env]
+        (destructure* bindings))
       (core/destructure bindings)))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;
