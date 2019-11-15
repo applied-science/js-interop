@@ -63,6 +63,9 @@
     `(~(dot-get k) ~obj)
     `(~'cljs.core/unchecked-get ~obj ~(wrap-key k))))
 
+(defmacro !get [obj k]
+  `(applied-science.js-interop/unchecked-get ~obj ~k))
+
 (defmacro unchecked-set [obj & keyvals]
   (let [o (gensym "obj")]
     `(let [~o ~obj]
@@ -71,6 +74,9 @@
              `(set! (~(dot-get k) ~o) ~v)
              `(~'cljs.core/unchecked-set ~o ~(wrap-key k) ~v)))
        ~o)))
+
+(defmacro !set [obj & keyvals]
+  `(applied-science.js-interop/unchecked-set ~obj ~@keyvals))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
