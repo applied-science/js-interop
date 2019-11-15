@@ -677,3 +677,15 @@
           "let js-destructure, static key does not find renamed property"))
 
     (is (= [10 20 30 40] (d/let [a 10 b 20 ^js [c d] #js [30 40]] [a b c d])))))
+
+(comment
+  (let [arr (rand-nth [#js[1 2 3 4]])]
+    (simple-benchmark []
+                      (d/let [^js [n1 n2 n3 n4] arr] (+ n1 n2 n3 n4))
+                      10000)
+    (simple-benchmark []
+                      (let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4))
+                      10000)
+    ;;    [], (d/let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4)), 10000 runs, 1 msecs
+    ;;    [], (let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4)), 10000 runs, 6 msecs
+    ))
