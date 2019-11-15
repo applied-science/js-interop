@@ -94,7 +94,7 @@
 
 (defn- get*
   ([env obj k]
-   (get* env obj k nil))
+   (get* env obj k 'js/undefined))
   ([env obj k not-found]
    (let [o (gensym "obj")
          k-sym (gensym "k")]
@@ -257,11 +257,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Object creation
-
-
-(comment
- (defn infer-tag [env form]
-   (ana/infer-tag env (ana/no-warn (ana/analyze env form)))))
 
 (defn- literal-obj
   [keyvals]
