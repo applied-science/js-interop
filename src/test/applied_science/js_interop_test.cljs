@@ -1,7 +1,6 @@
 (ns applied-science.js-interop-test
   (:require [applied-science.js-interop :as j]
-            [applied-science.js-interop.alpha.destructure :as d]
-            [clojure.core :as core]
+            [applied-science.js-interop.destructure :as d]
             [cljs.test :as test :refer [is
                                         are
                                         testing

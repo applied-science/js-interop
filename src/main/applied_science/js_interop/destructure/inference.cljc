@@ -1,4 +1,4 @@
-(ns applied-science.js-interop.alpha.inference
+(ns applied-science.js-interop.destructure.inference
   (:require [cljs.analyzer :as ana]
             [cljs.env :as env]
             [clojure.string :as str]))

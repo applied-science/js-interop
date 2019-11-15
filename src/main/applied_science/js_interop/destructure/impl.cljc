@@ -1,10 +1,10 @@
-(ns applied-science.js-interop.alpha.destructure-impl
+(ns applied-science.js-interop.destructure.impl
   (:refer-clojure :exclude [destructure])
   (:require [clojure.string :as str]
             [clojure.core :as core]
             [clojure.spec.alpha :as s]
             #?@(:clj [[net.cgrand.macrovich :as macros]
-                      [applied-science.js-interop.alpha.inference :as inf]]))
+                      [applied-science.js-interop.destructure.inference :as inf]]))
   #?(:cljs (:require-macros [net.cgrand.macrovich :as macros])))
 
 (macros/deftime
@@ -211,7 +211,7 @@
               (recur (next params) (conj new-params gparam)
                      (conj lets (first params) gparam))))
           [new-params
-           `[(~'applied-science.js-interop.alpha.destructure/let ~lets
+           `[(~'applied-science.js-interop.destructure/let ~lets
                ~@body)]]))))
 
   (core/defn destructure-fn-args [args]
