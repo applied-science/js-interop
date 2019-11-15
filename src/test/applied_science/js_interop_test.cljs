@@ -674,4 +674,6 @@
 
     (d/let [^js {:keys [aaaaa]} (j/obj .-aaaaa 10)]
       (is (advanced-not= 10 aaaaa)
-          "let js-destructure, static key does not find renamed property"))))
+          "let js-destructure, static key does not find renamed property"))
+
+    (is (= [10 20 30 40] (d/let [a 10 b 20 ^js [c d] #js [30 40]] [a b c d])))))

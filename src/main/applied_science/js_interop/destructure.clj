@@ -14,7 +14,7 @@
   [bindings & body]
   (if (empty? bindings)
     `(do ~@body)
-    `(~'clojure.core/let ~(d/destructure &env (take 2 bindings))
+    `(~'clojure.core/let ~(vec (d/destructure &env (take 2 bindings)))
        (~'applied-science.js-interop.destructure/let
          ~(vec (drop 2 bindings))
          ~@body))))
