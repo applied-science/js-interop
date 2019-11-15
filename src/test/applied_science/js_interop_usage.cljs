@@ -1,9 +1,11 @@
 (ns applied-science.js-interop-usage
-  (:require [applied-science.js-interop :as j]))
+  (:require [applied-science.js-interop :as j]
+            [clojure.string :as str]))
 
 ;; sample operations, used to inspect generated code.
 ;;
-;; to compile, run: clj -m cljs.main --optimizations advanced -co '{:pseudo-names true}' -c applied-science.js-interop-usage
+;; to compile, run:
+;; clj -A:usage -m cljs.main --optimizations advanced -co '{:pseudo-names true}' -c applied-science.js-interop-usage
 ;;
 ;; compiled js will be in:
 ;;
@@ -67,3 +69,8 @@
 
 (js/console.log "___select-keys-2"
                 (j/select-keys o [.-something]))
+
+(js/console.log "___inferred-types"
+                (j/obj (name :hello/world) "SVAL")
+                #_(j/inferred-type (name :hello/world))
+                #_(let [n (name :hello/world)] (j/inferred-type n)))

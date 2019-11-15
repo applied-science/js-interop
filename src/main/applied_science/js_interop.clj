@@ -2,8 +2,10 @@
   (:refer-clojure :exclude [get get-in contains? select-keys assoc! unchecked-get unchecked-set apply extend])
   (:require [clojure.core :as core]
             [cljs.compiler :as comp]
+            [cljs.analyzer :as ana]
             [clojure.walk :as walk]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [applied-science.js-interop.inference :as inf]))
 
 (def ^:private reflect-property 'js/goog.reflect.objectProperty)
 (def ^:private lookup-sentinel 'applied-science.js-interop.impl/lookup-sentinel)
@@ -37,17 +39,25 @@
 
 (defn- wrap-key
   "Convert key to string at compile time when possible."
-  ([k]
-   (wrap-key k nil))
-  ([k obj]
+  ([env k]
+   (wrap-key env k nil))
+  ([env k obj]
    (cond
      (or (string? k)
          (number? k)) k
      (keyword? k) (name k)
-     (symbol? k) (cond (= (:tag (meta k)) "String") k
-                       (dot-sym? k) `(~reflect-property ~(comp/munge (dot-name k)) ~obj)
-                       :else `(~wrap-key* ~k))
+     (or (list? k)
+         (symbol? k)) (let [tag (inf/infer-tag env k)]
+                             (cond (#{'string 'String} tag) k
+                                   (= 'keyword tag) `(name ~k)
+                                   (dot-sym? k) `(~reflect-property ~(comp/munge (dot-name k)) ~obj)
+
+                                   :else `(~wrap-key* ~k)))
      :else `(~wrap-key* ~k))))
+
+(comment
+  (defmacro inferred-type [k]
+    (str (inf/infer-tag &env k))))
 
 (defn- wrap-keys
   "Fallback to wrapping keys at runtime"
@@ -61,7 +71,7 @@
 (defmacro unchecked-get [obj k]
   (if (dot-sym? k)
     `(~(dot-get k) ~obj)
-    `(~'cljs.core/unchecked-get ~obj ~(wrap-key k))))
+    `(~'cljs.core/unchecked-get ~obj ~(wrap-key &env k))))
 
 (defmacro !get [obj k]
   `(applied-science.js-interop/unchecked-get ~obj ~k))
@@ -72,7 +82,7 @@
        ~@(for [[k v] (partition 2 keyvals)]
            (if (dot-sym? k)
              `(set! (~(dot-get k) ~o) ~v)
-             `(~'cljs.core/unchecked-set ~o ~(wrap-key k) ~v)))
+             `(~'cljs.core/unchecked-set ~o ~(wrap-key &env k) ~v)))
        ~o)))
 
 (defmacro !set [obj & keyvals]
@@ -83,13 +93,13 @@
 ;; Lookups
 
 (defn- get*
-  ([obj k]
-   (get* obj k nil))
-  ([obj k not-found]
+  ([env obj k]
+   (get* env obj k nil))
+  ([env obj k not-found]
    (let [o (gensym "obj")
          k-sym (gensym "k")]
      `(let [~o ~obj
-            ~k-sym ~(wrap-key k o)]
+            ~k-sym ~(wrap-key env k o)]
         (if (~contains?* ~o ~k-sym)
           ~(if (dot-sym? k)
              `(~(dot-get k) ~o)
@@ -98,13 +108,13 @@
 
 (defmacro get
   ([obj k]
-   (get* obj k))
+   (get* &env obj k))
   ([obj k not-found]
-   (get* obj k not-found)))
+   (get* &env obj k not-found)))
 
 (defmacro get-in
   ([obj ks]
-   (reduce get* obj ks))
+   (reduce (partial get* &env) obj ks))
   ([obj ks not-found]
    (if (vector? ks)
      (let [sentinel (gensym "sent")]
@@ -124,7 +134,7 @@
   [obj k]
   (let [o (gensym "obj")]
     `(let [~o ~obj]
-       (~contains?* ~o ~(wrap-key k o)))))
+       (~contains?* ~o ~(wrap-key &env k o)))))
 
 (defmacro select-keys [obj ks]
   (if (vector? ks)
@@ -133,7 +143,7 @@
       `(let [~o ~obj
              ~out ~empty-obj]
          ~@(for [k ks]
-             `(when (~contains?* ~o ~(wrap-key k o))
+             `(when (~contains?* ~o ~(wrap-key &env k o))
                 (unchecked-set ~out ~k
                                (unchecked-get ~o ~k))))
          ~out))

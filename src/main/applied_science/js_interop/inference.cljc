@@ -1,4 +1,4 @@
-(ns applied-science.js-interop.destructure.inference
+(ns applied-science.js-interop.inference
   (:require [cljs.analyzer :as ana]
             [cljs.env :as env]
             [clojure.string :as str]))
@@ -7,10 +7,10 @@
   "Bind to &env value within a macro definition"
   nil)
 
-(defn infer-type
+(defn infer-tag
   "Infers type of expr"
   ([expr]
-   (infer-type *&env* expr))
+   (infer-tag *&env* expr))
   ([env expr]
    (->> (ana/analyze env expr)
         ana/no-warn

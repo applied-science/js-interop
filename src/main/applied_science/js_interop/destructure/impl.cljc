@@ -3,7 +3,7 @@
   (:require [clojure.string :as str]
             [clojure.core :as core]
             [clojure.spec.alpha :as s]
-            [applied-science.js-interop.destructure.inference :as inf]))
+            [applied-science.js-interop.inference :as inf]))
 
 (defn- dequote [x]
   (if (and (list? x) (= 'quote (first x)))
@@ -63,7 +63,7 @@
                                      ret))))
                              pmap
                              (core/fn [bvec b v]
-                               (core/let [record-fields (some-> (inf/infer-type v)
+                               (core/let [record-fields (some-> (inf/infer-tag v)
                                                                 (inf/record-fields))
                                           gmap (gensym "map__")
                                           defaults (:or b)]
