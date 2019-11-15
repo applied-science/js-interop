@@ -1,38 +1,34 @@
 (ns applied-science.js-interop.destructure
   (:refer-clojure :exclude [let fn defn])
-  (:require [clojure.core :as core]
-            [net.cgrand.macrovich :as macros]
-            [applied-science.js-interop.destructure.impl :as d]))
+  (:require [applied-science.js-interop.destructure.impl :as d]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Destructured forms
 
-(macros/deftime
+(defmacro let
+  "`let` with destructuring that supports js property and array access.
+   Use a ^js hint on the binding form to invoke. Eg/
 
-  (defmacro let
-    "`let` with destructuring that supports js property and array access.
-     Use a ^js hint on the binding form to invoke. Eg/
+   (let [^js {:keys [a]} obj] …)"
+  [bindings & body]
+  (if (empty? bindings)
+    `(do ~@body)
+    `(~'clojure.core/let ~(d/destructure &env (take 2 bindings))
+       (~'applied-science.js-interop.destructure/let
+         ~(vec (drop 2 bindings))
+         ~@body))))
 
-     (let [^js {:keys [a]} obj] …)"
-    [bindings & body]
-    (if (empty? bindings)
-      `(do ~@body)
-      `(core/let ~(d/destructure &env (take 2 bindings))
-         (~'applied-science.js-interop.destructure/let
-           ~(vec (drop 2 bindings))
-           ~@body))))
+(defmacro fn
+  "`fn` with argument destructuring that supports js property and array access.
+   Use a ^js hint on binding forms to invoke. Eg/
 
-  (defmacro fn
-    "`fn` with argument destructuring that supports js property and array access.
-     Use a ^js hint on binding forms to invoke. Eg/
+   (fn [^js {:keys [a]}] …)"
+  [& args]
+  (cons 'clojure.core/fn (d/destructure-fn-args args)))
 
-     (fn [^js {:keys [a]}] …)"
-    [& args]
-    (cons `core/fn (d/destructure-fn-args args)))
-
-  (defmacro defn
-    "`defn` with argument destructuring that supports js property and array access.
-     Use a ^js hint on binding forms to invoke."
-    [& args]
-    (cons `core/defn (d/destructure-fn-args args))))
+(defmacro defn
+  "`defn` with argument destructuring that supports js property and array access.
+   Use a ^js hint on binding forms to invoke."
+  [& args]
+  (cons 'clojure.core/defn (d/destructure-fn-args args)))
