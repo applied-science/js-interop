@@ -75,3 +75,10 @@
                 (j/get #js{} :a)
                 "cannot infer:"
                 (j/get x :a))
+
+(comment
+  (let [arr (rand-nth [#js[]])
+        obj #js{}]
+    (macroexpand '(j/let [[a b] #js[0 1]] b))
+    (macroexpand '(j/-checked-aget arr 0))
+    #_(macroexpand '(j/let [{:keys [a]} obj]))))

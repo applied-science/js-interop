@@ -1,6 +1,5 @@
 (ns applied-science.js-interop-test
   (:require [applied-science.js-interop :as j]
-            [applied-science.js-interop.destructure :as d]
             [cljs.test :as test :refer [is
                                         are
                                         testing
@@ -637,20 +636,20 @@
     (defrecord Hello [record-field])
 
     (is (= :record-field
-           (d/let [{:keys [record-field]} ^Hello (Hello. :record-field)]
+           (j/let [{:keys [record-field]} ^Hello (Hello. :record-field)]
              record-field)))
 
-    (is (= 10 ((d/fn [^js {:keys [aaaaa]}] aaaaa)
+    (is (= 10 ((j/fn [^js {:keys [aaaaa]}] aaaaa)
                #js{:aaaaa 10}))
         "js-destructure with ^js")
-    (is (= nil ((d/fn [{:keys [aaaaa]}] aaaaa)
+    (is (= nil ((j/fn [{:keys [aaaaa]}] aaaaa)
                 #js{:aaaaa 10}))
         "No js-destructure without ^js")
-    (is (= nil ((d/fn [^js {:keys [aaaaa]}] aaaaa)
+    (is (= nil ((j/fn [^js {:keys [aaaaa]}] aaaaa)
                 {:aaaaa 10}))
         "js-destructure does not read from map")
 
-    (d/defn multi-arity
+    (j/defn multi-arity
       ([^js {:keys [aaaaa]}]
        aaaaa)
       ([{clj :aaaaa} ^js {js :aaaaa}]
@@ -665,35 +664,35 @@
 
 
 
-    (is (= [10 nil] ((d/fn [^js [_ a b]] [a b])
+    (is (= [10 nil] ((j/fn [^js [_ a b]] [a b])
                      #js[0 10]))
         "array js-destructure")
-    (is (= 10 ((d/fn [[_ a]] a)
+    (is (= 10 ((j/fn [[_ a]] a)
                #js[0 10]))
         "nth destructure")
 
-    (d/let [^js {:keys [aaaaa]} #js{:aaaaa 10}]
+    (j/let [^js {:keys [aaaaa]} #js{:aaaaa 10}]
       (is (= 10 aaaaa)
           "let js-destructure, static key"))
 
-    (d/let [^js {:syms [aaaaa]} (j/obj .-aaaaa 10)]
+    (j/let [^js {:syms [aaaaa]} (j/obj .-aaaaa 10)]
       (is (= 10 aaaaa)
           "let js-destructure, renamable key"))
 
-    (d/let [^js {:keys [aaaaa]} (j/obj .-aaaaa 10)]
+    (j/let [^js {:keys [aaaaa]} (j/obj .-aaaaa 10)]
       (is (advanced-not= 10 aaaaa)
           "let js-destructure, static key does not find renamed property"))
 
-    (is (= [10 20 30 40] (d/let [a 10 b 20 ^js [c d] #js [30 40]] [a b c d])))))
+    (is (= [10 20 30 40] (j/let [a 10 b 20 ^js [c d] #js [30 40]] [a b c d])))))
 
 (comment
   (let [arr (rand-nth [#js[1 2 3 4]])]
     (simple-benchmark []
-                      (d/let [^js [n1 n2 n3 n4] arr] (+ n1 n2 n3 n4))
+                      (j/let [^js [n1 n2 n3 n4] arr] (+ n1 n2 n3 n4))
                       10000)
     (simple-benchmark []
                       (let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4))
                       10000)
-    ;;    [], (d/let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4)), 10000 runs, 1 msecs
+    ;;    [], (j/let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4)), 10000 runs, 1 msecs
     ;;    [], (let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4)), 10000 runs, 6 msecs
     ))

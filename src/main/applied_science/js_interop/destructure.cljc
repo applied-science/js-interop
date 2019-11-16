@@ -1,4 +1,4 @@
-(ns applied-science.js-interop.destructure.impl
+(ns applied-science.js-interop.destructure
   (:refer-clojure :exclude [destructure])
   (:require [clojure.string :as str]
             [clojure.core :as core]
@@ -21,7 +21,10 @@
   (core/let [js-env? (:ns inf/*&env*)
              bents (partition 2 bindings)
              pb (core/fn pb [bvec b v]
-                  (core/let [js? (and js-env? (= 'js (:tag (meta b)))) ;; read js tag from binding form (not value)
+                  (core/let [js? (and js-env? (or (= 'js (:tag (meta b)))
+                                                  (= 'js (:tag (meta v)))
+                                                  (inf/within? '#{js object array clj-nil js/undefined}
+                                                               (inf/infer-tags v))))
                              pvec
                              (core/fn [bvec b val]
                                (core/let [gvec (gensym "vec__")
@@ -55,7 +58,7 @@
                                                             (if has-rest
                                                               gfirst
                                                               (if js?
-                                                                (list 'cljs.core/aget v n)
+                                                                (list 'applied-science.js-interop/-checked-aget v n)
                                                                 (list `nth v n nil))))
                                                         (core/inc n)
                                                         (next bs)
@@ -206,7 +209,7 @@
             (recur (next params) (conj new-params gparam)
                    (conj lets (first params) gparam))))
         [new-params
-         `[(~'applied-science.js-interop.destructure/let ~lets
+         `[(~'applied-science.js-interop/let ~lets
              ~@body)]]))))
 
 (core/defn destructure-fn-args [args]

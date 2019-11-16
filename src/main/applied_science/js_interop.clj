@@ -5,7 +5,8 @@
             [cljs.compiler :as comp]
             [clojure.walk :as walk]
             [clojure.string :as str]
-            [applied-science.js-interop.inference :as inf]))
+            [applied-science.js-interop.inference :as inf]
+            [applied-science.js-interop.destructure :as d]))
 
 (def ^:private reflect-property 'js/goog.reflect.objectProperty)
 (def ^:private lookup-sentinel 'applied-science.js-interop.impl/lookup-sentinel)
@@ -101,7 +102,12 @@
 (defmacro -checked-contains? [o k]
   (if (inf/not-nil? (inf/infer-tags &env o))
     `(~in?* ~k ~o)
-    `(~contains?* ~o ~k)))
+    `(some->> ~o (~in?* ~k))))
+
+(defmacro -checked-aget [a i]
+  (if (inf/not-nil? (inf/infer-tags &env a))
+    `(~'cljs.core/aget ~a ~i)
+    `(some-> ~a (~'cljs.core/aget ~i))))
 
 (def ^:private checked-contains 'applied-science.js-interop/-checked-contains?)
 
@@ -312,3 +318,34 @@
             (list* 'cljs.core/array x)
             :else x))
     form))
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Destructured forms
+
+(defmacro let
+  "`let` with destructuring that supports js property and array access.
+   Use a ^js hint on the binding form to invoke. Eg/
+
+   (let [^js {:keys [a]} obj] …)"
+  [bindings & body]
+  (if (empty? bindings)
+    `(do ~@body)
+    `(~'clojure.core/let ~(vec (d/destructure &env (take 2 bindings)))
+       (~'applied-science.js-interop/let
+         ~(vec (drop 2 bindings))
+         ~@body))))
+
+(defmacro fn
+  "`fn` with argument destructuring that supports js property and array access.
+   Use a ^js hint on binding forms to invoke. Eg/
+
+   (fn [^js {:keys [a]}] …)"
+  [& args]
+  (cons 'clojure.core/fn (d/destructure-fn-args args)))
+
+(defmacro defn
+  "`defn` with argument destructuring that supports js property and array access.
+   Use a ^js hint on binding forms to invoke."
+  [& args]
+  (cons 'clojure.core/defn (d/destructure-fn-args args)))

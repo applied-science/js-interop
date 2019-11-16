@@ -1,7 +1,8 @@
 (ns applied-science.js-interop.inference
   (:require [cljs.analyzer :as ana]
             [cljs.env :as env]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [clojure.set :as set]))
 
 (def ^:dynamic *&env*
   "Bind to &env value within a macro definition"
@@ -17,6 +18,11 @@
   (cond (symbol? tag) (contains? #{'any 'clj-or-nil 'clj-nil 'js/undefined} tag)
         (set? tag) (or (empty? tag) (some maybe-nil? tag))
         :else true))
+
+(defn as-set [x] (if (set? x) x #{x}))
+
+(defn within? [pred-tags tags]
+  (set/superset? pred-tags (as-set tags)))
 
 (def not-nil? (complement maybe-nil?))
 
