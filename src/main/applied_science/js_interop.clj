@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [get get-in contains? select-keys assoc! unchecked-get unchecked-set apply extend])
   (:require [clojure.core :as core]
             [cljs.compiler :as comp]
-            [cljs.analyzer :as ana]
             [clojure.walk :as walk]
             [clojure.string :as str]
             [applied-science.js-interop.inference :as inf]))
@@ -146,8 +145,7 @@
              ~out ~empty-obj]
          ~@(for [k ks]
              `(when (~contains?* ~o ~(wrap-key &env k o))
-                (unchecked-set ~out ~k
-                               (unchecked-get ~o ~k))))
+                (!set ~out ~k (!get ~o ~k))))
          ~out))
     `(~'applied-science.js-interop.impl/select-keys* ~obj ~(wrap-keys ks))))
 
@@ -166,10 +164,10 @@
   "Returns `k` of `o`. If nil, sets and returns a new empty child object."
   [o k]
   (let [child (gensym "child")]
-    `(let [~child (unchecked-get ~o ~k)]
+    `(let [~child (!get ~o ~k)]
        (some-or ~child
                 (let [new-child# ~empty-obj]
-                  (unchecked-set ~o ~k new-child#)
+                  (!set ~o ~k new-child#)
                   new-child#)))))
 
 (defn- get-in+!
@@ -183,24 +181,28 @@
     `(let [~o ~obj]
        (-> (some-or ~o ~empty-obj)
            ~@(for [[k v] (partition 2 keyvals)]
-               `(unchecked-set ~k ~v))))))
+               `(!set ~k ~v))))))
 
 (defmacro assoc-in! [obj ks v]
   (if (vector? ks)
     (let [o (gensym "obj")]
       `(let [~o ~obj
-             ~o (some-or ~o ~empty-obj)
-             inner-obj# ~(get-in+! o (drop-last ks))]
-         (unchecked-set inner-obj# ~(last ks) ~v)
+             ~o (some-or ~o ~empty-obj)]
+         (!set ~(get-in+! o (drop-last ks)) ~(last ks) ~v)
          ~o))
     `(~'applied-science.js-interop.impl/assoc-in* ~obj ~(wrap-keys ks) ~v)))
+
+(defmacro !assoc-in! [obj ks v]
+  `(let [obj# ~obj]
+     (-> (!get-in obj# ~(drop-last ks))
+         (!set ~(last ks) ~v))
+     obj#))
 
 (defmacro update! [obj k f & args]
   (let [o (gensym "obj")]
     `(let [~o ~obj
            ~o (some-or ~o ~empty-obj)]
-       (unchecked-set ~o ~k
-                      (~f (unchecked-get ~o ~k) ~@args)))))
+       (!set ~o ~k (~f (!get ~o ~k) ~@args)))))
 
 (defmacro update-in! [obj ks f & args]
   (if (vector? ks)
@@ -280,7 +282,7 @@
       (literal-obj kvs)
       `(-> ~empty-obj
            ~@(for [[k v] kvs]
-               `(unchecked-set ~k ~v))))))
+               `(!set ~k ~v))))))
 
 ;; Nested literals (maps/vectors become objects/arrays)
 
