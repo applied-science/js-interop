@@ -671,6 +671,15 @@
                #js[0 10]))
         "nth destructure")
 
+    (is (clj= (j/let [[n1 n2 & more] #js[0 1 2 3 4]]
+                     [n1 n2 more])
+              [0 1 [2 3 4]])
+        "array destructure & rest")
+
+    (is (= (j/let [^js [& more] nil] more)
+           nil)
+        "array destructure & rest")
+
     (j/let [^js {:keys [aaaaa]} #js{:aaaaa 10}]
       (is (= 10 aaaaa)
           "let js-destructure, static key"))
@@ -696,3 +705,4 @@
     ;;    [], (j/let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4)), 10000 runs, 1 msecs
     ;;    [], (let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4)), 10000 runs, 6 msecs
     ))
+

@@ -23,16 +23,17 @@
              pb (core/fn pb [bvec b v]
                   (core/let [js? (and js-env? (or (= 'js (:tag (meta b)))
                                                   (= 'js (:tag (meta v)))
-                                                  (inf/within? '#{js clj-nil js/undefined}
+                                                  (inf/within? '#{js array clj-nil js/undefined}
                                                                (inf/infer-tags v))))
                              pvec
                              (core/fn [bvec b val]
                                (core/let [gvec (gensym "vec__")
                                           gseq (gensym "seq__")
                                           gfirst (gensym "first__")
-                                          has-rest (some #{'&} b)]
+                                          has-rest (some #{'&} b)
+                                          clj-rest? (and has-rest (not js?))]
                                  (core/loop [ret (core/let [ret (conj bvec gvec val)]
-                                                   (if has-rest
+                                                   (if clj-rest?
                                                      (conj ret gseq (core/list `seq gvec))
                                                      ret))
                                              n 0
@@ -41,7 +42,10 @@
                                    (if (seq bs)
                                      (core/let [firstb (first bs)]
                                        (core/cond
-                                         (= firstb '&) (recur (pb ret (second bs) gseq)
+                                         (= firstb '&) (recur (pb ret (second bs) (if js? `(some->
+                                                                                             ~(with-meta gvec {:tag 'array})
+                                                                                             (.slice ~n))
+                                                                                          gseq))
                                                               n
                                                               (nnext bs)
                                                               true)
@@ -49,13 +53,13 @@
                                          :else (if seen-rest?
                                                  (throw #?(:clj  (new Exception "Unsupported binding form, only :as can follow & parameter")
                                                            :cljs (new js/Error "Unsupported binding form, only :as can follow & parameter")))
-                                                 (recur (pb (if has-rest
+                                                 (recur (pb (if clj-rest?
                                                               (conj ret
                                                                     gfirst `(first ~gseq)
                                                                     gseq `(next ~gseq))
                                                               ret)
                                                             firstb
-                                                            (if has-rest
+                                                            (if clj-rest?
                                                               gfirst
                                                               (if js?
                                                                 (list 'applied-science.js-interop/-checked-aget v n)
