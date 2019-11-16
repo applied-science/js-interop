@@ -37,7 +37,10 @@
    (get-value-by-keys obj ks*))
   ([obj ks* not-found]
    (if-some [last-obj (get-value-by-keys obj (butlast ks*))]
-     (gobj/get last-obj (peek ks*) not-found)
+     (let [k (peek ks*)]
+       (if (js-in k last-obj)
+         (j/unchecked-get last-obj k)
+         not-found))
      not-found)))
 
 (defn select-keys*
@@ -46,7 +49,7 @@
   (->> ks*
        (reduce (fn [m k]
                  (cond-> m
-                         ^boolean (gobj/containsKey obj k)
+                         ^boolean (contains?* obj k)
                          (doto
                            (unchecked-set k
                                           (unchecked-get obj k))))) #js {})))
@@ -71,7 +74,7 @@
 (defn apply-in*
   [obj ks* arg-array]
   (let [parent (get-in* obj (pop ks*))
-        f (gobj/get parent (peek ks*))]
+        f (unchecked-get parent (peek ks*))]
     (.apply f parent arg-array)))
 
 

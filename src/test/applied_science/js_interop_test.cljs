@@ -260,10 +260,10 @@
        JavaScript coerces `nil` to the string 'null'.")
 
   (let [obj (j/assoc-in! nil [:x :y]
-              (fn [x]
-                (this-as this
-                  [x                                        ;; variables are passed in
-                   (fn? (j/get this :y))])))]               ;; `this` is set to parent
+                         (fn [x]
+                           (this-as this
+                             [x                             ;; variables are passed in
+                              (fn? (j/get this :y))])))]    ;; `this` is set to parent
 
 
     (is (= (j/call-in obj [:x :y] 10)
@@ -510,6 +510,14 @@
               (contains? '.-y))
           "unchecked-set uses host-interop syntax directly (GCC friendly)"))
 
+    (is (= (j/!get-in #js{:a #js{:b 1}} [:a :b])
+           1))
+
+
+    (is (thrown? js/Error
+                 (= (j/!get-in #js{} [:a :b])
+                    1)))
+
     )
 
   (testing "object creation"
@@ -557,7 +565,7 @@
              [1 2])))
 
     (testing "js-literal behaviour"
-      (let [o #js {:yyyyyy 10
+      (let [o #js {:yyyyyy  10
                    "zzzzzz" 20}]
         (is (= (j/get o .-yyyyyy) (if advanced? nil 10)))
         (is (= (j/get o :yyyyyy) 10))

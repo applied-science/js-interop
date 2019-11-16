@@ -48,11 +48,11 @@
      (keyword? k) (name k)
      (or (list? k)
          (symbol? k)) (let [tag (inf/infer-tag env k)]
-                             (cond (#{'string 'String} tag) k
-                                   (= 'keyword tag) `(name ~k)
-                                   (dot-sym? k) `(~reflect-property ~(comp/munge (dot-name k)) ~obj)
+                        (cond (#{'string 'String} tag) k
+                              (= 'keyword tag) `(name ~k)
+                              (dot-sym? k) `(~reflect-property ~(comp/munge (dot-name k)) ~obj)
 
-                                   :else `(~wrap-key* ~k)))
+                              :else `(~wrap-key* ~k)))
      :else `(~wrap-key* ~k))))
 
 (comment
@@ -117,18 +117,20 @@
    (reduce (partial get* &env) obj ks))
   ([obj ks not-found]
    (if (vector? ks)
-     (let [sentinel (gensym "sent")]
-       `(let [~sentinel ~lookup-sentinel
-              out# ~(reduce
-                     (fn [out k]
-                       `(let [out# ~out]
-                          (if (identical? out# ~sentinel)
-                            ~sentinel
-                            (get out# ~k ~sentinel)))) obj ks)]
-          (if (= ~sentinel out#)
-            ~not-found
-            out#)))
+     `(let [out# ~(reduce
+                    (fn [out k]
+                      `(let [out# ~out]
+                         (if (identical? out# ~lookup-sentinel)
+                           ~lookup-sentinel
+                           (get out# ~k ~lookup-sentinel)))) obj ks)]
+        (if (= ~lookup-sentinel out#)
+          ~not-found
+          out#))
      `(~'applied-science.js-interop.impl/get-in* ~obj ~(wrap-keys ks) ~not-found))))
+
+(defmacro !get-in
+  [obj ks]
+  (reduce (fn [out k] `(!get ~out ~k)) obj ks))
 
 (defmacro contains?
   [obj k]
@@ -232,25 +234,25 @@
   (if (dot-sym? k)
     `(~(dot-call k) ~obj ~@args)
     `(let [obj# ~obj
-           f# (get obj# ~k)]
+           ^function f# (!get obj# ~k)]
        (.call f# obj# ~@args))))
 
 (defmacro call-in [obj ks & args]
   (if (vector? ks)
-    `(let [parent# (get-in ~obj ~(pop ks))
-           f# (get parent# ~(peek ks))]
+    `(let [parent# (!get-in ~obj ~(pop ks))
+           ^function f# (!get parent# ~(peek ks))]
        (.call f# parent# ~@args))
     `(~'applied-science.js-interop.impl/apply-in* ~obj ~(wrap-keys ks) (cljs.core/array ~@args))))
 
 (defmacro apply [obj k arg-array]
   `(let [obj# ~obj
-         f# (get obj# ~k)]
+         ^function f# (!get obj# ~k)]
      (.apply f# obj# ~arg-array)))
 
 (defmacro apply-in [obj ks arg-array]
   (if (vector? ks)
-    `(let [parent# (get-in ~obj ~(pop ks))
-           f# (get parent# ~(peek ks))]
+    `(let [parent# (!get-in ~obj ~(pop ks))
+           ^function f# (!get parent# ~(peek ks))]
        (.apply f# parent# ~arg-array))
     `(~'applied-science.js-interop.impl/apply-in* ~obj ~(wrap-keys ks) ~arg-array)))
 
@@ -286,11 +288,11 @@
   "Returns literal JS forms for Clojure maps (->objects) and vectors (->arrays)."
   [form]
   (walk/prewalk
-   (fn [x]
-     (cond (map? x)
-           (list* 'applied-science.js-interop/obj
-                  (core/apply concat x))
-           (vector? x)
-           (list* 'cljs.core/array x)
-           :else x))
-   form))
+    (fn [x]
+      (cond (map? x)
+            (list* 'applied-science.js-interop/obj
+                   (core/apply concat x))
+            (vector? x)
+            (list* 'cljs.core/array x)
+            :else x))
+    form))
