@@ -23,7 +23,7 @@
              pb (core/fn pb [bvec b v]
                   (core/let [js? (and js-env? (or (= 'js (:tag (meta b)))
                                                   (= 'js (:tag (meta v)))
-                                                  (inf/within? '#{js object array clj-nil js/undefined}
+                                                  (inf/within? '#{js clj-nil js/undefined}
                                                                (inf/infer-tags v))))
                              pvec
                              (core/fn [bvec b val]
