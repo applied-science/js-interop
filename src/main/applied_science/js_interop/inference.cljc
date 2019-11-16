@@ -7,32 +7,38 @@
   "Bind to &env value within a macro definition"
   nil)
 
-(defn infer-tag
+(defn normalize-tag [tag]
+  (if (set? tag)
+    (let [tags (into #{} (keep normalize-tag) tag)]
+      (if (<= 1 (count tags)) (first tags) tags))
+    ({'Array 'array} tag tag)))
+
+(defn maybe-nil? [tag]
+  (cond (symbol? tag) (contains? #{'any 'clj-or-nil 'clj-nil 'js/undefined} tag)
+        (set? tag) (or (empty? tag) (some maybe-nil? tag))
+        :else true))
+
+(def not-nil? (complement maybe-nil?))
+
+(defn infer-tags
   "Infers type of expr"
   ([expr]
-   (infer-tag *&env* expr))
+   (infer-tags *&env* expr))
   ([env expr]
    (->> (ana/analyze env expr)
         ana/no-warn
-        (ana/infer-tag env))))
-
-(defn- resolve-tag [tag]
-  (or (#{'js} tag)
-      (ana/resolve-symbol tag)))
-
-(defn- get-def [sym]
-  (get-in @env/*compiler* [:cljs.analyzer/namespaces
-                           (symbol (namespace sym))
-                           :defs
-                           (symbol (name sym))]))
+        (ana/infer-tag env)
+        (normalize-tag))))
 
 (defn record-fields
   "Returns record fields for given type tag"
   [tag]
-  (let [tag (resolve-tag tag)
-        positional-factory (symbol (namespace tag)
-                                   (str "->" (str/replace (name tag) #"^^" "")))]
-    (some-> (get-def positional-factory)
-            :method-params
-            first
-            set)))
+  (when (qualified-symbol? tag)
+    (let [positional-factory-name (symbol (str "->" (str/replace (name tag) #"^^" "")))]
+      (some-> (get-in @env/*compiler* [:cljs.analyzer/namespaces
+                                       (symbol (namespace tag))
+                                       :defs
+                                       positional-factory-name])
+              :method-params
+              first
+              set))))

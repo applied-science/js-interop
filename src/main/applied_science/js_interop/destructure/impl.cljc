@@ -63,7 +63,7 @@
                                      ret))))
                              pmap
                              (core/fn [bvec b v]
-                               (core/let [record-fields (some-> (inf/infer-tag v)
+                               (core/let [record-fields (some-> (inf/infer-tags v)
                                                                 (inf/record-fields))
                                           gmap (gensym "map__")
                                           defaults (:or b)]

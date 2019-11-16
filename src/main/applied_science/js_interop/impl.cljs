@@ -1,5 +1,4 @@
 (ns applied-science.js-interop.impl
-  (:require [goog.object :as gobj])
   (:require-macros [applied-science.js-interop :as j]))
 
 (def lookup-sentinel #js{})
@@ -10,9 +9,12 @@
   (cond-> k
           (keyword? k) (name)))
 
+(defn ^boolean in?* [k* obj]
+  (js-in k* obj))
+
 (defn ^boolean contains?* [obj k*]
   (and (some? obj)
-       (js-in k* obj)))
+       (in?* k* obj)))
 
 (defn- get+! [o k*]
   (if-some [child-obj (unchecked-get o k*)]

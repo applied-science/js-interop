@@ -13,7 +13,6 @@
 ;; out/main.js                            (advanced-compiled with pseudo-names)
 
 (def o #js{})
-(def out #js{})
 
 (unchecked-set o "___get-1"
                (j/get o :something))
@@ -70,7 +69,9 @@
 (js/console.log "___select-keys-2"
                 (j/select-keys o [.-something]))
 
-(js/console.log "___inferred-types"
-                (j/obj (name :hello/world) "SVAL")
-                #_(j/inferred-type (name :hello/world))
-                #_(let [n (name :hello/world)] (j/inferred-type n)))
+(js/console.log "___checked-contains"
+                (def x (rand-nth [#js{}]))
+                "can infer:"
+                (j/get #js{} :a)
+                "cannot infer:"
+                (j/get x :a))
