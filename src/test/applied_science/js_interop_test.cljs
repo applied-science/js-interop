@@ -672,7 +672,7 @@
         "nth destructure")
 
     (is (clj= (j/let [[n1 n2 & more] #js[0 1 2 3 4]]
-                     [n1 n2 more])
+                [n1 n2 more])
               [0 1 [2 3 4]])
         "array destructure & rest")
 
@@ -706,3 +706,7 @@
     ;;    [], (let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4)), 10000 runs, 6 msecs
     ))
 
+(comment
+  (defn ro [] (when ([true false] 1) #js{}))
+  (j/infer-tags (ro))
+  (macroexpand '(j/let [^js[a] (take 1 (repeat "a"))])))

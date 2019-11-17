@@ -99,17 +99,8 @@
 ;;
 ;; Lookups
 
-(defmacro -checked-contains? [o k]
-  (if (inf/not-nil? (inf/infer-tags &env o))
-    `(~in?* ~k ~o)
-    `(some->> ~o (~in?* ~k))))
-
 (defmacro -checked-aget [a i]
-  (if (inf/not-nil? (inf/infer-tags &env a))
-    `(~'cljs.core/aget ~a ~i)
-    `(some-> ~a (~'cljs.core/aget ~i))))
-
-(def ^:private checked-contains 'applied-science.js-interop/-checked-contains?)
+  `(some-> ~a (~'cljs.core/aget ~i)))
 
 (defn- get*
   ([env obj k]
@@ -119,7 +110,7 @@
               k-sym (gensym "k")]
      `(core/let [~o ~obj
                  ~k-sym ~(wrap-key env k o)]
-        (if (~checked-contains ~o ~k-sym)
+        (if (some->> ~o (~in?* ~k-sym))
           ~(if (dot-sym? k)
              `(~(dot-get k) ~o)
              `(~'cljs.core/unchecked-get ~o ~k-sym))
@@ -155,7 +146,7 @@
   [obj k]
   (core/let [o (gensym "obj")]
     `(core/let [~o ~obj]
-       (~checked-contains ~o ~(wrap-key &env k o)))))
+       (some->> ~o (~in?* ~(wrap-key &env k o))))))
 
 (defmacro select-keys [obj ks]
   (if (vector? ks)
@@ -164,7 +155,7 @@
       `(core/let [~o ~obj
                   ~out ~empty-obj]
          ~@(for [k ks]
-             `(when (~checked-contains ~o ~(wrap-key &env k o))
+             `(when (some->> ~o (~in?* ~(wrap-key &env k o)))
                 (!set ~out ~k (!get ~o ~k))))
          ~out))
     `(~'applied-science.js-interop.impl/select-keys* ~obj ~(wrap-keys ks))))

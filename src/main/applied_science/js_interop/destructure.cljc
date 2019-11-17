@@ -26,13 +26,23 @@
                                                   (inf/within? '#{js array clj-nil js/undefined}
                                                                (inf/infer-tags v))))
                              pvec
-                             (core/fn [bvec b val]
+                             (core/fn [bvec b v]
                                (core/let [gvec (gensym "vec__")
+                                          gvec? (gensym "some_vec__")
                                           gseq (gensym "seq__")
                                           gfirst (gensym "first__")
                                           has-rest (some #{'&} b)
-                                          clj-rest? (and has-rest (not js?))]
-                                 (core/loop [ret (core/let [ret (conj bvec gvec val)]
+                                          clj-rest? (and has-rest (not js?))
+                                          get-nth (fn [n]
+                                                    (if js? `(when ~gvec? (aget ~gvec ~n))
+                                                            `(nth ~gvec ~n nil)))
+                                          get-rest (fn [n]
+                                                     (if js? `(some->
+                                                                ~(with-meta gvec {:tag 'array})
+                                                                (.slice ~n))
+                                                             gseq))]
+                                 (core/loop [ret (core/let [ret (cond-> (conj bvec gvec v)
+                                                                        js? (conj gvec? `(some? ~gvec)))]
                                                    (if clj-rest?
                                                      (conj ret gseq (core/list `seq gvec))
                                                      ret))
@@ -42,10 +52,7 @@
                                    (if (seq bs)
                                      (core/let [firstb (first bs)]
                                        (core/cond
-                                         (= firstb '&) (recur (pb ret (second bs) (if js? `(some->
-                                                                                             ~(with-meta gvec {:tag 'array})
-                                                                                             (.slice ~n))
-                                                                                          gseq))
+                                         (= firstb '&) (recur (pb ret (second bs) (get-rest n))
                                                               n
                                                               (nnext bs)
                                                               true)
@@ -61,9 +68,7 @@
                                                             firstb
                                                             (if clj-rest?
                                                               gfirst
-                                                              (if js?
-                                                                (list 'applied-science.js-interop/-checked-aget v n)
-                                                                (list `nth v n nil))))
+                                                              (get-nth n)))
                                                         (core/inc n)
                                                         (next bs)
                                                         seen-rest?))))
