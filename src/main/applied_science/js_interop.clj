@@ -99,9 +99,6 @@
 ;;
 ;; Lookups
 
-(defmacro -checked-aget [a i]
-  `(some-> ~a (~'cljs.core/aget ~i)))
-
 (defn- get*
   ([env obj k]
    (get* env obj k 'js/undefined))

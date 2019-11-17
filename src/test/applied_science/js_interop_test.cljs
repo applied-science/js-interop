@@ -709,4 +709,5 @@
 (comment
   (defn ro [] (when ([true false] 1) #js{}))
   (j/infer-tags (ro))
+  (j/let [^js [n1 n2 & n3] nil] [n1 n2 n3])
   (macroexpand '(j/let [^js[a] (take 1 (repeat "a"))])))
