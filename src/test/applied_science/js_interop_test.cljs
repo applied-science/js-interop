@@ -639,20 +639,20 @@
            (j/let [{:keys [record-field]} ^Hello (Hello. :record-field)]
              record-field)))
 
-    (is (= 10 ((j/fn [^js {:keys [aaaaa]}] aaaaa)
+    (is (= 10 ((j/fn [^:js {:keys [aaaaa]}] aaaaa)
                #js{:aaaaa 10}))
         "js-destructure with ^js")
     (is (= nil ((j/fn [{:keys [aaaaa]}] aaaaa)
                 #js{:aaaaa 10}))
         "No js-destructure without ^js")
-    (is (= nil ((j/fn [^js {:keys [aaaaa]}] aaaaa)
+    (is (= nil ((j/fn [^:js {:keys [aaaaa]}] aaaaa)
                 {:aaaaa 10}))
         "js-destructure does not read from map")
 
     (j/defn multi-arity
-      ([^js {:keys [aaaaa]}]
+      ([^:js {:keys [aaaaa]}]
        aaaaa)
-      ([{clj :aaaaa} ^js {js :aaaaa}]
+      ([{clj :aaaaa} ^:js {js :aaaaa}]
        [clj js]))
 
 
@@ -664,7 +664,7 @@
 
 
 
-    (is (= [10 nil] ((j/fn [^js [_ a b]] [a b])
+    (is (= [10 nil] ((j/fn [^:js [_ a b]] [a b])
                      #js[0 10]))
         "array js-destructure")
     (is (= 10 ((j/fn [[_ a]] a)
@@ -676,23 +676,23 @@
               [0 1 [2 3 4]])
         "array destructure & rest")
 
-    (is (= (j/let [^js [& more] nil] more)
+    (is (= (j/let [^:js [& more] nil] more)
            nil)
         "array destructure & rest")
 
-    (j/let [^js {:keys [aaaaa]} #js{:aaaaa 10}]
+    (j/let [^:js {:keys [aaaaa]} #js{:aaaaa 10}]
       (is (= 10 aaaaa)
           "let js-destructure, static key"))
 
-    (j/let [^js {:syms [aaaaa]} (j/obj .-aaaaa 10)]
+    (j/let [^:js {:syms [aaaaa]} (j/obj .-aaaaa 10)]
       (is (= 10 aaaaa)
           "let js-destructure, renamable key"))
 
-    (j/let [^js {:keys [aaaaa]} (j/obj .-aaaaa 10)]
+    (j/let [^:js {:keys [aaaaa]} (j/obj .-aaaaa 10)]
       (is (advanced-not= 10 aaaaa)
           "let js-destructure, static key does not find renamed property"))
 
-    (is (= [10 20 30 40] (j/let [a 10 b 20 ^js [c d] #js [30 40]] [a b c d])))))
+    (is (= [10 20 30 40] (j/let [a 10 b 20 ^:js [c d] #js [30 40]] [a b c d])))))
 
 (comment
   (let [arr (rand-nth [#js[1 2 3 4]])]

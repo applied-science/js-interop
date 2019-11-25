@@ -21,7 +21,7 @@
   (core/let [js-env? (:ns inf/*&env*)
              bents (partition 2 bindings)
              pb (core/fn pb [bvec b v]
-                  (core/let [js? (and js-env? (or (= 'js (:tag (meta b)))
+                  (core/let [js? (and js-env? (or (true? (:js (meta b)))
                                                   (= 'js (:tag (meta v)))
                                                   (inf/within? '#{js array clj-nil js/undefined}
                                                                (inf/infer-tags v))))
