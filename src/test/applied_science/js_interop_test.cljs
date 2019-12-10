@@ -213,6 +213,10 @@
                                            :c 3}]))
     [1 2 3]
 
+    ;; lookup with nil
+    (j/lookup nil)
+    (apply j/lookup [nil])
+    nil
 
     ;; select-keys
     (j/select-keys #js {:x 10} [:x :y])

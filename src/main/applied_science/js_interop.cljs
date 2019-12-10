@@ -90,7 +90,8 @@
    ...)
   ```"
   [obj]
-  (JSLookup. obj))
+  (when obj
+    (JSLookup. obj)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
