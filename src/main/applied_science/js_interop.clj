@@ -274,9 +274,9 @@
 (defn- lit* [x]
   (cond (map? x)
         (list* 'applied-science.js-interop/obj
-               (core/apply concat   (reduce-kv #(assoc %1 %2 (lit-f %3)) {} x)))
+               (reduce-kv #(conj %1 %2 (lit* %3)) [] x))
         (vector? x)
-        (list* 'cljs.core/array (into [] (map lit-f) x))
+        (list* 'cljs.core/array (mapv lit* x))
         :else x))
 
 (defmacro lit

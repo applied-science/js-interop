@@ -619,6 +619,7 @@
 
     (is (object? (j/lit {})))
     (is (object? (j/lit {:my-fn (fn [])})))
+    (is (fn? (j/get (j/lit {:my-fn (fn [])}) :my-fn)))
     (is (array? (j/lit [])))
     (is (object? (first (j/lit [{}]))))
     (is (array? (-> (j/lit [{:a [{:b []}]}])
