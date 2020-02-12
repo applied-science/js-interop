@@ -271,15 +271,24 @@
 
 ;; Nested literals (maps/vectors become objects/arrays)
 
-(defn- lit* [x]
-  (cond (map? x)
-        (list* 'applied-science.js-interop/obj
-               (reduce-kv #(conj %1 %2 (lit* %3)) [] x))
-        (vector? x)
-        (list* 'cljs.core/array (mapv lit* x))
-        :else x))
+(defn lit*
+  "Recursively converts literal Clojure maps/vectors into JavaScript object/array expressions
+
+  Options map accepts a :keyfn for custom key conversions."
+  ([x]
+   (lit* nil x))
+  ([{:as   opts
+     :keys [keyfn]
+     :or   {keyfn identity}} x]
+   (cond (map? x)
+         (list* 'applied-science.js-interop/obj
+                (reduce-kv #(conj %1 (keyfn %2) (lit* opts %3)) [] x))
+         (vector? x)
+         (list* 'cljs.core/array (mapv lit* x))
+         :else x)))
 
 (defmacro lit
-  "Returns literal JS forms for Clojure maps (->objects) and vectors (->arrays)."
+  "Recursively converts literal Clojure maps/vectors into JavaScript object/array expressions
+   (using j/obj and cljs.core/array)"
   [form]
   (lit* form))
