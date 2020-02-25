@@ -46,8 +46,7 @@ jobs:
     executor: clojure
     steps:
       - prepare
-      - run: yarn build
-      - run: yarn deploy
+      - run: clojure -A:release
 
 workflows:
   version: 2

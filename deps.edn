@@ -13,11 +13,6 @@
    :extra-deps {olical/cljs-test-runner {:mvn/version "3.5.0"}}
    :main-opts ["-m" "cljs-test-runner.main"]}
 
-
   :release
-  {:extra-paths ["src/release"]
-   :extra-deps {pack/pack.alpha {:git/url "https://github.com/juxt/pack.alpha.git"
-                                 :sha "c93adda9a17a2c4992a70a41b73add0073657758"}
-                com.workframe/garamond {:mvn/version "0.4.0"}
-                deps-deploy {:mvn/version "0.0.9"}}
-   :main-opts ["-m" "release"]}}}
+  {:extra-deps {mhuebert/deps-library {:mvn/version "0.1.4"}}
+   :main-opts ["-m" "deps-library.release"]}}}
