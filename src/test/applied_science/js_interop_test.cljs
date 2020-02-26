@@ -515,6 +515,14 @@
               (contains? '.-y))
           "unchecked-set uses host-interop syntax directly (GCC friendly)"))
 
+    (is (= (j/!get-in #js{:a #js{:b 1}} [:a :b])
+           1))
+
+
+    (is (thrown? js/Error
+                 (= (j/!get-in #js{} [:a :b])
+                    1)))
+
     )
 
   (testing "object creation"

@@ -1,5 +1,4 @@
 (ns applied-science.js-interop.impl
-  (:require [goog.object :as gobj])
   (:require-macros [applied-science.js-interop :as j]))
 
 (def lookup-sentinel #js{})
@@ -10,9 +9,12 @@
   (cond-> k
           (keyword? k) (name)))
 
+(defn ^boolean in?* [k* obj]
+  (js-in k* obj))
+
 (defn ^boolean contains?* [obj k*]
   (and (some? obj)
-       (js-in k* obj)))
+       (in?* k* obj)))
 
 (defn- get+! [o k*]
   (if-some [child-obj (unchecked-get o k*)]
@@ -37,7 +39,10 @@
    (get-value-by-keys obj ks*))
   ([obj ks* not-found]
    (if-some [last-obj (get-value-by-keys obj (butlast ks*))]
-     (gobj/get last-obj (peek ks*) not-found)
+     (let [k (peek ks*)]
+       (if (js-in k last-obj)
+         (j/unchecked-get last-obj k)
+         not-found))
      not-found)))
 
 (defn select-keys*
@@ -46,7 +51,7 @@
   (->> ks*
        (reduce (fn [m k]
                  (cond-> m
-                         ^boolean (gobj/containsKey obj k)
+                         ^boolean (contains?* obj k)
                          (doto
                            (unchecked-set k
                                           (unchecked-get obj k))))) #js {})))
@@ -71,7 +76,7 @@
 (defn apply-in*
   [obj ks* arg-array]
   (let [parent (get-in* obj (pop ks*))
-        f (gobj/get parent (peek ks*))]
+        f (unchecked-get parent (peek ks*))]
     (.apply f parent arg-array)))
 
 

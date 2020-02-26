@@ -14,5 +14,5 @@
    :main-opts ["-m" "cljs-test-runner.main"]}
 
   :release
-  {:extra-deps {mhuebert/deps-library {:mvn/version "0.1.4"}}
+  {:extra-deps {mhuebert/deps-library {:mvn/version "0.1.8"}}
    :main-opts ["-m" "deps-library.release"]}}}
