@@ -15,8 +15,11 @@
 
 (def ^:export o #js{})
 (def ^:export out #js{})
-
 (def ^:export o2 (j/obj .-world 10))
+
+(j/let [a #js[1 2 3 4 5]
+        ^:js [a b c & xs] a]
+  (js/console.log "Array destructuring" #js[b xs]))
 
 ((fn [o2]
    (unchecked-set o "__!get"

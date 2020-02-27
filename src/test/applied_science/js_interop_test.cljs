@@ -1,14 +1,12 @@
 (ns applied-science.js-interop-test
   (:require [applied-science.js-interop :as j]
-            [clojure.core :as core]
             [cljs.test :as test :refer [is
                                         are
                                         testing
                                         deftest]]
             [clojure.pprint :refer [pprint]]
             [goog.object :as gobj]
-            [goog.reflect :as reflect]
-            [clojure.walk :as walk]))
+            [goog.reflect :as reflect]))
 
 (set! *warn-on-infer* true)
 
@@ -635,4 +633,87 @@
     (is (array? (j/lit [])))
     (is (object? (first (j/lit [{}]))))
     (is (array? (-> (j/lit [{:a [{:b []}]}])
-                    (j/get-in [0 :a 0 :b]))))))
+                    (j/get-in [0 :a 0 :b])))))
+
+  (testing "destructure"
+
+    ;; records store their fields, so we can recognize them.
+    ;; only defined fields use direct lookup.
+    (defrecord Hello [record-field])
+
+    (is (= :record-field
+           (j/let [^:js {:keys [record-field]} (Hello. :record-field)]
+             record-field)))
+
+    (is (= 10 ((j/fn [^:js {:keys [aaaaa]}] aaaaa)
+               #js{:aaaaa 10}))
+        "js-destructure with ^js")
+    (is (= nil ((j/fn [{:keys [aaaaa]}] aaaaa)
+                #js{:aaaaa 10}))
+        "No js-destructure without ^js")
+    (is (= nil ((j/fn [^:js {:keys [aaaaa]}] aaaaa)
+                {:aaaaa 10}))
+        "js-destructure does not read from map")
+
+    (j/defn multi-arity
+      ([^:js {:keys [aaaaa]}]
+       aaaaa)
+      ([{clj :aaaaa} ^:js {js :aaaaa}]
+       [clj js]))
+
+
+    (let [obj #js{:aaaaa 10}]
+      (and (is (= 10 (multi-arity obj))
+               "Multi-arity defn, js-destructure")
+           (is (= [nil 10] (multi-arity obj obj))
+               "Multi-arity defn, dual-distructure")))
+
+
+
+    (is (= [10 nil] ((j/fn [^:js [_ a b]] [a b])
+                     #js[0 10]))
+        "array js-destructure")
+    (is (= 10 ((j/fn [[_ a]] a)
+               #js[0 10]))
+        "nth destructure")
+
+    (is (clj= (j/let [[n1 n2 & more] #js[0 1 2 3 4]]
+                [n1 n2 more])
+              [0 1 [2 3 4]])
+        "array destructure & rest")
+
+    (is (= (j/let [^:js [& more] nil] more)
+           nil)
+        "array destructure & rest")
+
+    (j/let [^:js {:keys [aaaaa]} #js{:aaaaa 10}]
+      (is (= 10 aaaaa)
+          "let js-destructure, static key"))
+
+    (j/let [^:js {:syms [aaaaa]} (j/obj .-aaaaa 10)]
+      (is (= 10 aaaaa)
+          "let js-destructure, renamable key"))
+
+    (j/let [^:js {:keys [aaaaa]} (j/obj .-aaaaa 10)]
+      (is (advanced-not= 10 aaaaa)
+          "let js-destructure, static key does not find renamed property"))
+
+    (is (= [10 20 30 40] (j/let [a 10 b 20 ^:js [c d] #js [30 40]] [a b c d])))))
+
+(comment
+  (let [arr (rand-nth [#js[1 2 3 4]])]
+    (simple-benchmark []
+                      (j/let [^js [n1 n2 n3 n4] arr] (+ n1 n2 n3 n4))
+                      10000)
+    (simple-benchmark []
+                      (let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4))
+                      10000)
+    ;;    [], (j/let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4)), 10000 runs, 1 msecs
+    ;;    [], (let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4)), 10000 runs, 6 msecs
+    ))
+
+(comment
+  (defn ro [] (when ([true false] 1) #js{}))
+  (j/infer-tags (ro))
+  (j/let [^js [n1 n2 & n3] nil] [n1 n2 n3])
+  (macroexpand '(j/let [^js[a] (take 1 (repeat "a"))])))
