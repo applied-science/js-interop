@@ -46,8 +46,10 @@
          (number? k)) k
      (keyword? k) (name k)
      (symbol? k) (cond (= (:tag (meta k)) "String") k
-                       (dot-sym? k) `(~reflect-property ~(comp/munge (dot-name k)) ~obj)
+                       (dot-sym? k) ^::wrapped-key `(~reflect-property ~(comp/munge (dot-name k)) ~obj)
                        :else `(~wrap-key* ~k))
+     (and (seq? k)
+          (::wrapped-key (meta k))) k
      :else `(~wrap-key* ~k))))
 
 (defn- wrap-keys
@@ -59,13 +61,22 @@
 ;;
 ;; Unchecked operations
 
-(defmacro unchecked-get [obj k]
-  (if (dot-sym? k)
-    `(~(dot-get k) ~obj)
-    `(~'cljs.core/unchecked-get ~obj ~(wrap-key k))))
+(defmacro unchecked-get
+  ([obj k]
+   (if (dot-sym? k)
+     `(~(dot-get k) ~obj)
+     `(~'cljs.core/unchecked-get ~obj ~(wrap-key k))))
+  ([obj k not-found]
+   (let [o (gensym "obj")
+         k-sym (gensym "k")]
+     `(let [~o ~obj
+            ~k-sym ~(wrap-key k o)]
+        (if (~in?* ~k-sym ~o)
+          (unchecked-get ~o ~k-sym)
+          ~not-found)))))
 
-(defmacro !get [obj k]
-  `(applied-science.js-interop/unchecked-get ~obj ~k))
+(defmacro !get [& args]
+  `(unchecked-get ~@args))
 
 (defmacro unchecked-set [obj & keyvals]
   (let [o (gensym "obj")]
@@ -92,9 +103,7 @@
      `(let [~o ~obj
             ~k-sym ~(wrap-key k o)]
         (if (some->> ~o (~in?* ~k-sym))
-          ~(if (dot-sym? k)
-             `(~(dot-get k) ~o)
-             `(!get ~o ~k-sym))
+          (!get ~o ~k-sym)
           ~not-found)))))
 
 (defmacro get
@@ -256,8 +265,8 @@
 
 
 (comment
- (defn infer-tag [env form]
-   (ana/infer-tag env (ana/no-warn (ana/analyze env form)))))
+  (defn infer-tag [env form]
+    (ana/infer-tag env (ana/no-warn (ana/analyze env form)))))
 
 (defn- literal-obj
   [keyvals]
