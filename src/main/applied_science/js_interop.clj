@@ -9,8 +9,6 @@
 
 (def ^:private reflect-property 'js/goog.reflect.objectProperty)
 (def ^:private lookup-sentinel 'applied-science.js-interop.impl/lookup-sentinel)
-(def ^:private contains?* 'applied-science.js-interop.impl/contains?*)
-(def ^:private in?* 'applied-science.js-interop.impl/in?*)
 (def ^:private wrap-key* 'applied-science.js-interop.impl/wrap-key)
 (def ^:private empty-obj '(cljs.core/js-obj))
 
@@ -47,11 +45,12 @@
      (or (string? k)
          (number? k)) k
      (keyword? k) (name k)
-     (symbol? k) (cond (= (:tag (meta k)) "String") k
-                       (dot-sym? k) ^::wrapped-key `(~reflect-property ~(comp/munge (dot-name k)) ~obj)
-                       :else `(~wrap-key* ~k))
+     (symbol? k) (cond (::wrapped (meta k)) k
+                       (= (:tag (meta k)) "String") k
+                       (dot-sym? k) ^::wrapped `(~reflect-property ~(comp/munge (dot-name k)) ~obj)
+                       :else ^::wrapped `(~wrap-key* ~k))
      (and (seq? k)
-          (::wrapped-key (meta k))) k
+          (::wrapped (meta k))) k
      :else `(~wrap-key* ~k))))
 
 (defn- wrap-keys
@@ -63,6 +62,9 @@
 ;;
 ;; Unchecked operations
 
+(defmacro in? [k obj]
+  `(~'applied-science.js-interop.impl/in?* ~k ~obj))
+
 (defmacro unchecked-get
   ([obj k]
    (if (dot-sym? k)
@@ -72,8 +74,8 @@
    (c/let [o (gensym "obj")
            k-sym (gensym "k")]
      `(c/let [~o ~obj
-              ~k-sym ~(wrap-key k o)]
-        (if (~in?* ~k-sym ~o)
+              ^::wrapped ~k-sym ~(wrap-key k o)]
+        (if (in? ~k-sym ~o)
           (unchecked-get ~o ~k-sym)
           ~not-found)))))
 
@@ -96,6 +98,13 @@
 ;;
 ;; Lookups
 
+(defmacro contains?
+  [obj k]
+  (c/let [o (gensym "obj")]
+    `(c/let [~o ~obj]
+       (and (some? ~o)
+            (in? ~(wrap-key k o) ~o)))))
+
 (defn- get*
   ([obj k]
    (get* obj k 'js/undefined))
@@ -103,9 +112,9 @@
    (c/let [o (gensym "obj")
            k-sym (gensym "k")]
      `(c/let [~o ~obj
-              ~k-sym ~(wrap-key k o)]
-        (if (some->> ~o (~in?* ~k-sym))
-          (!get ~o ~k-sym)
+              ^::wrapped ~k-sym ~(wrap-key k o)]
+        (if (contains? ~o ~k-sym)
+          (cljs.core/unchecked-get ~o ~k-sym)
           ~not-found)))))
 
 (defmacro get
@@ -125,7 +134,7 @@
                            (if (identical? out# ~lookup-sentinel)
                              ~lookup-sentinel
                              (get out# ~k ~lookup-sentinel)))) obj ks)]
-        (if (= ~lookup-sentinel out#)
+        (if (identical? ~lookup-sentinel out#)
           ~not-found
           out#))
      `(~'applied-science.js-interop.impl/get-in* ~obj ~(wrap-keys ks) ~not-found))))
@@ -134,12 +143,6 @@
   [obj ks]
   (reduce (c/fn [out k] `(!get ~out ~k)) obj ks))
 
-(defmacro contains?
-  [obj k]
-  (c/let [o (gensym "obj")]
-    `(c/let [~o ~obj]
-       (some->> ~o (~in?* ~(wrap-key k o))))))
-
 (defmacro select-keys [obj ks]
   (if (vector? ks)
     (c/let [o (gensym "obj")
@@ -147,7 +150,7 @@
       `(c/let [~o ~obj
                ~out ~empty-obj]
          ~@(for [k ks]
-             `(when (some->> ~o (~in?* ~(wrap-key k o)))
+             `(when (contains? ~o ~k)
                 (!set ~out ~k (!get ~o ~k))))
          ~out))
     `(~'applied-science.js-interop.impl/select-keys* ~obj ~(wrap-keys ks))))
