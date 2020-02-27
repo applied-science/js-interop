@@ -1,17 +1,28 @@
 (ns applied-science.js-interop-usage
   (:require [applied-science.js-interop :as j]))
 
+(set! *warn-on-infer* true)
+
 ;; sample operations, used to inspect generated code.
 ;;
-;; to compile, run: clj -m cljs.main --optimizations advanced -co '{:pseudo-names true}' -c applied-science.js-interop-usage
+;; to compile, run:
+;; clj -A:usage -m cljs.main -o out/USAGE.js -co '{:pseudo-names true :optimizations :advanced :infer-externs true}' -c applied-science.js-interop-usage
 ;;
 ;; compiled js will be in:
 ;;
 ;; out/applied_science/js_interop_usage   (uncompressed)
-;; out/main.js                            (advanced-compiled with pseudo-names)
+;; out/USAGE.js                           (advanced-compiled with pseudo-names)
 
-(def o #js{})
-(def out #js{})
+(def ^:export o #js{})
+(def ^:export out #js{})
+
+(def ^:export o2 (j/obj .-world 10))
+
+((fn [o2]
+   (unchecked-set o "__!get"
+                  #js [(j/!get o2 .-world)
+                       (.-world o2)]))
+ o2)
 
 (unchecked-set o "___get-1"
                (j/get o :something))

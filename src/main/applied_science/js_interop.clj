@@ -23,9 +23,6 @@
 (defn- dot-name [sym]
   (str/replace (name sym) #"^\.\-?" ""))
 
-(defn- dot-get [sym]
-  (symbol (str ".-" (dot-name sym))))
-
 (defn- dot-call [sym]
   (symbol (str "." (dot-name sym))))
 
@@ -63,9 +60,7 @@
 
 (defmacro unchecked-get
   ([obj k]
-   (if (dot-sym? k)
-     `(~(dot-get k) ~obj)
-     `(~'cljs.core/unchecked-get ~obj ~(wrap-key k))))
+   `(~'cljs.core/unchecked-get ~obj ~(wrap-key k)))
   ([obj k not-found]
    (let [o (gensym "obj")
          k-sym (gensym "k")]
@@ -82,9 +77,7 @@
   (let [o (gensym "obj")]
     `(let [~o ~obj]
        ~@(for [[k v] (partition 2 keyvals)]
-           (if (dot-sym? k)
-             `(set! (~(dot-get k) ~o) ~v)
-             `(~'cljs.core/unchecked-set ~o ~(wrap-key k) ~v)))
+           `(~'cljs.core/unchecked-set ~o ~(wrap-key k) ~v))
        ~o)))
 
 (defmacro !set [obj & keyvals]
@@ -234,11 +227,9 @@
 ;; Function operations
 
 (defmacro call [obj k & args]
-  (if (dot-sym? k)
-    `(~(dot-call k) ~obj ~@args)
-    `(let [obj# ~obj
-           ^function f# (!get obj# ~k)]
-       (.call f# obj# ~@args))))
+  `(let [obj# ~obj
+         ^function f# (!get obj# ~k)]
+     (.call f# obj# ~@args)))
 
 (defmacro call-in [obj ks & args]
   (if (vector? ks)
