@@ -2,8 +2,7 @@
   (:refer-clojure :exclude [destructure])
   (:require [clojure.string :as str]
             [clojure.core :as c]
-            [clojure.spec.alpha :as s]
-            [applied-science.js-interop.inference :as inf]))
+            [clojure.spec.alpha :as s]))
 
 (defn- dequote [x]
   (if (and (list? x) (= 'quote (first x)))
@@ -16,12 +15,20 @@
 (defn- dot-access [s]
   (symbol (str/replace-first (name s) #"^(?:\.\-)?" ".-")))
 
-(c/defn destructure* [bindings]
-  ;; slightly modified from cljs.core/destructure
-  (c/let [js-env? (:ns inf/*&env*)
-          bents (partition 2 bindings)
+(c/defn destructure
+  "Destructure with direct array and object access.
+
+  Invoked via ^:js metadata on binding form:
+
+  (let [^:js {:keys [a]} obj] ...)
+
+  Keywords compile to static keys, symbols to renamable keys,
+  and array access to `aget`."
+  [bindings]
+  ;; modified from cljs.core/destructure
+  (c/let [bents (partition 2 bindings)
           pb (c/fn pb [bvec b v]
-               (c/let [js? (and js-env? (true? (:js (meta b))))
+               (c/let [js? (true? (:js (meta b)))
                        pvec
                        (c/fn [bvec b v]
                          (c/let [gvec (gensym "vec__")
@@ -72,9 +79,7 @@
                                ret))))
                        pmap
                        (c/fn [bvec b v]
-                         (c/let [record-fields (some-> (inf/infer-tags v)
-                                                       (inf/record-fields))
-                                 gmap (gensym "map__")
+                         (c/let [gmap (gensym "map__")
                                  defaults (:or b)]
                            (c/loop [ret (c/-> bvec (conj gmap) (conj v)
                                               (conj gmap) (conj `(if (~'cljs.core/implements? c/ISeq ~gmap) (apply cljs.core/hash-map ~gmap) ~gmap))
@@ -108,9 +113,7 @@
 
                                        ;; convert renamable keys to .-dotFormat
                                        bk (let [k (dequote bk)]
-                                            (if (or (and js? (symbol? k))
-                                                    ;; renamable record
-                                                    (and js-env? (contains? record-fields (symbol (name k)))))
+                                            (if (and js? (symbol? k))
                                               (dot-access k)
                                               bk))
                                        ;; use js-interop for ^js-tagged bindings & other renamable keys
@@ -138,30 +141,15 @@
                    (map? b) (pmap bvec b v)
                    :else (throw
                            #?(:clj  (new Exception (c/str "Unsupported binding form: " b))
-                              :cljs (new js/Error (core/str "Unsupported binding form: " b)))))))
+                              :cljs (new js/Error (c/str "Unsupported binding form: " b)))))))
           process-entry (c/fn [bvec b] (pb bvec (first b) (second b)))]
     (if (every? c/symbol? (map first bents))
       bindings
       (c/if-let [kwbs (seq (filter #(c/keyword? (first %)) bents))]
         (throw
           #?(:clj  (new Exception (c/str "Unsupported binding key: " (ffirst kwbs)))
-             :cljs (new js/Error (core/str "Unsupported binding key: " (ffirst kwbs)))))
+             :cljs (new js/Error (c/str "Unsupported binding key: " (ffirst kwbs)))))
         (reduce process-entry [] bents)))))
-
-(defn destructure
-  "Destructure with direct array and object access on records, types, and ^js hinted values.
-
-  Hints may be placed on the binding or value:
-  (let [^js {:keys [a]} obj] ...)
-        ^
-  (let [{:keys [a]} ^js obj] ...)
-                    ^
-
-  Keywords compile to static keys, symbols to renamable keys,
-  and array access to `aget`."
-  [env bindings]
-  (binding [inf/*&env* env]
-    (destructure* bindings)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

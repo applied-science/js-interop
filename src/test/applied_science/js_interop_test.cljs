@@ -642,7 +642,7 @@
     (defrecord Hello [record-field])
 
     (is (= :record-field
-           (j/let [^:js {:keys [record-field]} (Hello. :record-field)]
+           (j/let [^:js {:syms [record-field]} (Hello. :record-field)]
              record-field)))
 
     (is (= 10 ((j/fn [^:js {:keys [aaaaa]}] aaaaa)

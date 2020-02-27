@@ -323,7 +323,7 @@
   [bindings & body]
   (if (empty? bindings)
     `(do ~@body)
-    `(~'clojure.core/let ~(vec (d/destructure &env (take 2 bindings)))
+    `(~'clojure.core/let ~(vec (d/destructure (take 2 bindings)))
        (~'applied-science.js-interop/let
          ~(vec (drop 2 bindings))
          ~@body))))
