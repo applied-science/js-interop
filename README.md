@@ -102,6 +102,28 @@ The `lookup` function wraps an object with an `ILookup` implementation, suitable
   ...)
 ```
 
+### Destructuring
+
+With `j/let`, `j/defn` and `j/fn`, opt-in to js-interop lookups by adding `^:js` in front of a
+binding form:
+
+```clj
+(j/let [^:js {:keys [x y z]} obj  ;; static keys using keywords
+        ^:js {:syms [x y z]} obj] ;; renamable keys using symbols
+  ...)
+
+(j/defn my-fn [^:js {:keys [a b c]}]
+  ...)
+
+(j/fn [^:js [n1 n2 n3 & nrest]] ;; array access using aget, and .slice for &rest parameters
+  ...)
+```
+
+Note that the `^:js` metadata is placed in front of a **binding form**. To avoid surprises,
+we do not use type inference to try and guess what lookup form to use. `^:js` is recursive;
+at any point you may use `^:clj` to opt-out.  Behaviour is strictly equivalent to regular
+Clojure where `^:js` metadata is not present.
+
 ### Mutation
 
 Mutation functions include `assoc!`, `assoc-in!`, `update!`, and `update-in!`. These functions
@@ -205,7 +227,7 @@ they are suitable for threading.
 #=> 10
 ```
  
-## Table of core operations
+## Core operations
 
 |  | _arguments_| _examples_ |
 |-------------------|-------------------------------------------|----------------------------------------------------------------|
@@ -216,6 +238,14 @@ they are suitable for threading.
 | **j/assoc-in!**   | [obj path value]                          | `(j/assoc-in! o [:x :y] 100)`                                    |
 | **j/update!**     | [obj key f & args]                        | `(j/update! o :a inc)`<br/>`(j/update! o :a + 10)`                 |
 | **j/update-in!**  | [obj path f & args]                       | `(j/update-in! o [:x :y] inc)`<br/>`(j/update-in! o [:x :y] + 10)` |
+
+## Destructuring forms
+
+|  | _arguments_| _examples_ |
+|-------------------|-------------------------------------------|
+| **j/let**         | (j/let [^:js {:keys [a]} obj] ...)        |
+| **j/fn**          | (j/fn [^:js [a b c]] ...)                 |
+| **j/defn**        | (j/defn [^:js {:syms [a]}] ...)           |
 
 
 ## Tests
