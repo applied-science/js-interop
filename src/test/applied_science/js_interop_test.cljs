@@ -504,19 +504,16 @@
     (is (clj= (j/unchecked-set #js{} .-aaaaaa 10 .-bbbbbb 20)
               (j/obj .-aaaaaa 10 .-bbbbbb 20)))
 
-    (comment
-      ;; removing these tests because we are not expanding to .- syntax anymore - rather,
-      ;; we use goog.reflect to convert the key.
-      (testing "unchecked-get compiles directly to expected syntax"
-        (is (= (macroexpand-1 '(applied-science.js-interop/unchecked-get o .-y))
-               '(.-y o)))
+    (testing "unchecked-get compiles directly to expected syntax"
+      (is (= (macroexpand-1 '(applied-science.js-interop/unchecked-get o .-y))
+             '(.-y o)))
 
-        (is (-> '(applied-science.js-interop/unchecked-set o .-y :value)
-                (macroexpand-1)
-                (flatten)
-                (set)
-                (contains? '.-y))
-            "unchecked-set uses host-interop syntax directly (GCC friendly)")))
+      (is (-> '(applied-science.js-interop/unchecked-set o .-y :value)
+              (macroexpand-1)
+              (flatten)
+              (set)
+              (contains? '.-y))
+          "unchecked-set uses host-interop syntax directly (GCC friendly)"))
 
     (is (= (j/!get-in #js{:a #js{:b 1}} [:a :b])
            1))
