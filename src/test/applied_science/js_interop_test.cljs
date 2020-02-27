@@ -641,9 +641,20 @@
     ;; only defined fields use direct lookup.
     (defrecord Hello [record-field])
 
-    (is (= :record-field
-           (j/let [^:js {:syms [record-field]} (Hello. :record-field)]
-             record-field)))
+    (is (= [:record-field nil]
+           (j/let [^:js {as-sym 'record-field
+                         as-key :record-field} (Hello. :record-field)]
+             [as-sym as-key])))
+
+    (is (= 10
+           (j/let [^:js {{{[_ _ n] :z} :y} :x} (j/lit {:x {:y {:z [0 5 10]}}})]
+             n))
+        "Nested ^:js")
+
+    (is (= 10
+           (j/let [^:js {{^:clj {[_ _ n] :z} :y} :x} #js{:x #js {:y {:z [0 5 10]}}}]
+             n))
+        "Nested ^:js with internal ^:clj")
 
     (is (= 10 ((j/fn [^:js {:keys [aaaaa]}] aaaaa)
                #js{:aaaaa 10}))
@@ -703,7 +714,7 @@
 (comment
   (let [arr (rand-nth [#js[1 2 3 4]])]
     (simple-benchmark []
-                      (j/let [^js [n1 n2 n3 n4] arr] (+ n1 n2 n3 n4))
+                      (j/let [^:js [n1 n2 n3 n4] arr] (+ n1 n2 n3 n4))
                       10000)
     (simple-benchmark []
                       (let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4))
