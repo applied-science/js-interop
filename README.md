@@ -253,7 +253,6 @@ they are suitable for threading.
 | **j/fn**          | `(j/fn [^:js [a b c]] ...)`               |
 | **j/defn**        | `(j/defn [^:js {:syms [a]}] ...)`         |
 
-
 ## Tests
 
 To run the tests:
