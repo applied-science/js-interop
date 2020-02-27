@@ -21,8 +21,13 @@ A JavaScript-interop library for ClojureScript.
 (j/get-in o [:x :y])
 (j/select-keys o [:a :b :c])
 
-(let [{:keys [x]} (j/lookup o)]
+(let [{:keys [x]} (j/lookup o)] ;; lookup wrapper
   ...)
+
+;; Destructure
+(j/let [^:js {:keys [a b c} o] ...)
+(j/fn [^:js [n1 n2] ...)
+(j/defn my-fn [^:js {:syms [a b c]}])
 
 ;; Write
 (j/assoc! o :a 1)
@@ -45,8 +50,6 @@ A JavaScript-interop library for ClojureScript.
 ```
 
 ## Installation
-
-This library is **alpha** and is published to Clojars. It has no external dependencies.
 
 ```clj
 ;; lein or boot
@@ -112,17 +115,20 @@ binding form:
         ^:js {:syms [x y z]} obj] ;; renamable keys using symbols
   ...)
 
+(j/fn [^:js [n1 n2 n3 & nrest]] ;; array access using aget, and .slice for &rest parameters
+  ...)
+
 (j/defn my-fn [^:js {:keys [a b c]}]
   ...)
 
-(j/fn [^:js [n1 n2 n3 & nrest]] ;; array access using aget, and .slice for &rest parameters
-  ...)
 ```
 
-Note that the `^:js` metadata is placed in front of a **binding form**. To avoid surprises,
-we do not use type inference to try and guess what lookup form to use. `^:js` is recursive;
-at any point you may use `^:clj` to opt-out.  Behaviour is strictly equivalent to regular
-Clojure where `^:js` metadata is not present.
+The opt-in `^:js` syntax was selected so that bindings behave exactly like regular Clojure
+wherever `^:js` is not explicitly invoked, and js-lookups are immediately recognizable
+even in a long `let` binding.
+
+`^:js` is recursive. At any depth, you may use `^:clj` to opt-out.
+
 
 ### Mutation
 
@@ -241,11 +247,11 @@ they are suitable for threading.
 
 ## Destructuring forms
 
-|  | _arguments_| _examples_ |
+|  | _example_ |
 |-------------------|-------------------------------------------|
-| **j/let**         | (j/let [^:js {:keys [a]} obj] ...)        |
-| **j/fn**          | (j/fn [^:js [a b c]] ...)                 |
-| **j/defn**        | (j/defn [^:js {:syms [a]}] ...)           |
+| **j/let**         | `(j/let [^:js {:keys [a]} obj] ...)`      |
+| **j/fn**          | `(j/fn [^:js [a b c]] ...)`               |
+| **j/defn**        | `(j/defn [^:js {:syms [a]}] ...)`         |
 
 
 ## Tests
