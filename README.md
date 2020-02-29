@@ -25,8 +25,8 @@ A JavaScript-interop library for ClojureScript.
   ...)
 
 ;; Destructure
-(j/let [^:js {:keys [a b c} o] ...)
-(j/fn [^:js [n1 n2] ...)
+(j/let [^:js {:keys [a b c]} o] ...)
+(j/fn [^:js [n1 n2]] ...)
 (j/defn my-fn [^:js {:syms [a b c]}])
 
 ;; Write
