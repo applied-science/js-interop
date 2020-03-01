@@ -81,3 +81,9 @@
 
 (js/console.log "___select-keys-2"
                 (j/select-keys o [.-something]))
+
+
+(goog-define debug false)
+;; sanity-check: both of the following are DCE'd, the ^boolean hint is unnecessary
+(when debug (js/console.log "CCC"))
+(when ^boolean debug (js/console.log "DDD"))

@@ -45,12 +45,12 @@
      (or (string? k)
          (number? k)) k
      (keyword? k) (name k)
-     (symbol? k) (cond (::wrapped (meta k)) k
-                       (= (:tag (meta k)) "String") k
-                       (dot-sym? k) ^::wrapped `(~reflect-property ~(comp/munge (dot-name k)) ~obj)
-                       :else ^::wrapped `(~wrap-key* ~k))
-     (and (seq? k)
-          (::wrapped (meta k))) k
+     (or (symbol? k)
+         (seq? k)) (cond (::wrapped (meta k)) k
+                         (#{"String"
+                            "string"} (some-> (:tag (meta k)) (name))) k
+                         (dot-sym? k) ^::wrapped `(~reflect-property ~(comp/munge (dot-name k)) ~obj)
+                         :else ^::wrapped `(~wrap-key* ~k))
      :else `(~wrap-key* ~k))))
 
 (defn- wrap-keys
@@ -204,11 +204,13 @@
          (!set ~(last ks) ~v))
      obj#))
 
+(defmacro !update [obj k f & args]
+  `(c/let [o# ~obj]
+     (!set o# ~k (~f (!get o# ~k) ~@args))))
+
 (defmacro update! [obj k f & args]
-  (c/let [o (gensym "obj")]
-    `(c/let [~o ~obj
-             ~o (some-or ~o ~empty-obj)]
-       (!set ~o ~k (~f (!get ~o ~k) ~@args)))))
+  `(c/let [o# ~obj]
+     (!update (some-or o# ~empty-obj) ~k ~f ~@args)))
 
 (defmacro update-in! [obj ks f & args]
   (if (vector? ks)
@@ -298,9 +300,9 @@
   Options map accepts a :keyfn for custom key conversions."
   ([x]
    (lit* nil x))
-  ([{:as   opts
+  ([{:as opts
      :keys [keyfn]
-     :or   {keyfn identity}} x]
+     :or {keyfn identity}} x]
    (cond (map? x)
          (list* 'applied-science.js-interop/obj
                 (reduce-kv #(conj %1 (keyfn %2) (lit* opts %3)) [] x))

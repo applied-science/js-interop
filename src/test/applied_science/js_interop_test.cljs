@@ -724,6 +724,40 @@
     ))
 
 (comment
+  ;; `case` is the ~same speed as looking up a key in an object
+  (let [obj #js{:abc 10 :def 20 :ghi 30 :jkl 40 :mno 50}]
+    (simple-benchmark [x (rand-nth [:abc :def :ghi :jkl :mno])]
+                      (j/!get obj x)
+                      100000)
+    (simple-benchmark [x (rand-nth [:abc :def :ghi :jkl :mno])]
+                      (case x
+                        :abc 10
+                        :def 20
+                        :ghi 30
+                        :jkl 40
+                        :mno 50)
+                      100000)
+    ;[x (rand-nth [:abc :def :ghi :jkl :mno])], (j/!get obj x), 100000 runs, 11 msecs
+    ;[x (rand-nth [:abc :def :ghi :jkl :mno])], (case x :abc 10 :def 20 :ghi 30 :jkl 40 :mno 50), 100000 runs, 11 msecs
+
+    ))
+
+(comment
+
+  (def get-thing (fn [] (rand-nth [{} #js{}])))
+  ((fn [f]
+     (simple-benchmark [thing (f)]
+                       (map? thing)
+                       100000)
+     (simple-benchmark [thing (f)]
+                       (object? thing)
+                       100000)) get-thing)
+  ;[x (rand-nth [:abc :def :ghi :jkl :mno])], (j/!get obj x), 100000 runs, 11 msecs
+  ;[x (rand-nth [:abc :def :ghi :jkl :mno])], (case x :abc 10 :def 20 :ghi 30 :jkl 40 :mno 50), 100000 runs, 11 msecs
+
+  )
+
+(comment
   (defn ro [] (when ([true false] 1) #js{}))
   (j/infer-tags (ro))
   (j/let [^js [n1 n2 & n3] nil] [n1 n2 n3])
