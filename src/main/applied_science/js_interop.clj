@@ -5,7 +5,8 @@
   (:require [clojure.core :as c]
             [cljs.compiler :as comp]
             [clojure.string :as str]
-            [applied-science.js-interop.destructure :as d]))
+            [applied-science.js-interop.destructure :as d]
+            [applied-science.js-interop.inference :as inf]))
 
 (def ^:private reflect-property 'js/goog.reflect.objectProperty)
 (def ^:private lookup-sentinel 'applied-science.js-interop.impl/lookup-sentinel)
@@ -35,23 +36,24 @@
 ;;
 ;; Throughout this namespace, k* and ks* refer to keys that have already been wrapped.
 
+(defn- as-string [x] (with-meta x {:tag 'string}))
 
 (defn- wrap-key
   "Convert key to string at compile time when possible."
-  ([k]
-   (wrap-key k nil))
-  ([k obj]
-   (cond
-     (or (string? k)
-         (number? k)) k
-     (keyword? k) (name k)
-     (or (symbol? k)
-         (seq? k)) (cond (::wrapped (meta k)) k
-                         (#{"String"
-                            "string"} (some-> (:tag (meta k)) (name))) k
-                         (dot-sym? k) ^::wrapped `(~reflect-property ~(comp/munge (dot-name k)) ~obj)
-                         :else ^::wrapped `(~wrap-key* ~k))
-     :else `(~wrap-key* ~k))))
+  [env obj k]
+  (cond
+    (or (string? k)
+        (number? k)) k
+    (keyword? k) (name k)
+    (or (symbol? k)
+        (seq? k)) (if (dot-sym? k)
+                    (as-string `(~reflect-property ~(comp/munge (dot-name k)) ~obj))
+                    (c/let [tags (inf/infer-tags env k)]
+                      (cond
+                        (inf/within? '#{string number} tags) k
+                        (inf/within? '#{keyword} tags) `(name ~k)
+                        :else (as-string `(~wrap-key* ~k)))))
+    :else (as-string `(~wrap-key* ~k))))
 
 (defn- wrap-keys
   "Fallback to wrapping keys at runtime"
@@ -69,12 +71,12 @@
   ([obj k]
    (if (dot-sym? k)
      `(~(dot-get k) ~obj)
-     `(~'cljs.core/unchecked-get ~obj ~(wrap-key k))))
+     `(~'cljs.core/unchecked-get ~obj ~(wrap-key &env nil k))))
   ([obj k not-found]
    (c/let [o (gensym "obj")
            k-sym (gensym "k")]
      `(c/let [~o ~obj
-              ^::wrapped ~k-sym ~(wrap-key k o)]
+              ~k-sym ~(wrap-key &env o k)]
         (if (in? ~k-sym ~o)
           (unchecked-get ~o ~k-sym)
           ~not-found)))))
@@ -88,7 +90,7 @@
        ~@(for [[k v] (partition 2 keyvals)]
            (if (dot-sym? k)
              `(set! (~(dot-get k) ~o) ~v)
-             `(~'cljs.core/unchecked-set ~o ~(wrap-key k) ~v)))
+             `(~'cljs.core/unchecked-set ~o ~(wrap-key &env nil k) ~v)))
        ~o)))
 
 (defmacro !set [obj & keyvals]
@@ -103,29 +105,29 @@
   (c/let [o (gensym "obj")]
     `(c/let [~o ~obj]
        (and (some? ~o)
-            (in? ~(wrap-key k o) ~o)))))
+            (in? ~(wrap-key &env o k) ~o)))))
 
 (defn- get*
-  ([obj k]
-   (get* obj k 'js/undefined))
-  ([obj k not-found]
+  ([env obj k]
+   (get* env obj k 'js/undefined))
+  ([env obj k not-found]
    (c/let [o (gensym "obj")
            k-sym (gensym "k")]
      `(c/let [~o ~obj
-              ^::wrapped ~k-sym ~(wrap-key k o)]
+              ~k-sym ~(wrap-key env o k)]
         (if (contains? ~o ~k-sym)
           (cljs.core/unchecked-get ~o ~k-sym)
           ~not-found)))))
 
 (defmacro get
   ([obj k]
-   (get* obj k))
+   (get* &env obj k))
   ([obj k not-found]
-   (get* obj k not-found)))
+   (get* &env obj k not-found)))
 
 (defmacro get-in
   ([obj ks]
-   (reduce get* obj ks))
+   (reduce (partial get* &env) obj ks))
   ([obj ks not-found]
    (if (vector? ks)
      `(c/let [out# ~(reduce
@@ -147,12 +149,15 @@
   (if (vector? ks)
     (c/let [o (gensym "obj")
             out (gensym "out")]
-      `(c/let [~o ~obj
-               ~out ~empty-obj]
-         ~@(for [k ks]
-             `(when (contains? ~o ~k)
-                (!set ~out ~k (!get ~o ~k))))
-         ~out))
+      `(c/let [~o ~obj]
+         (if (some? ~o)
+           (c/let [~out ~empty-obj]
+             ~@(for [k ks]
+                 `(c/let [k# ~(wrap-key &env o k)]
+                    (when (in? k# ~o)
+                      (!set ~out k# (!get ~o k#)))))
+             ~out)
+           ~empty-obj)))
     `(~'applied-science.js-interop.impl/select-keys* ~obj ~(wrap-keys ks))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -300,9 +305,9 @@
   Options map accepts a :keyfn for custom key conversions."
   ([x]
    (lit* nil x))
-  ([{:as opts
+  ([{:as   opts
      :keys [keyfn]
-     :or {keyfn identity}} x]
+     :or   {keyfn identity}} x]
    (cond (map? x)
          (list* 'applied-science.js-interop/obj
                 (reduce-kv #(conj %1 (keyfn %2) (lit* opts %3)) [] x))
