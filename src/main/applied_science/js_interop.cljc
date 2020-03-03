@@ -1,12 +1,13 @@
 (ns applied-science.js-interop
   (:refer-clojure :exclude [get get-in contains? select-keys assoc!
                             unchecked-get unchecked-set apply extend
-                            let fn defn])
+                            let fn defn array])
   (:require [clojure.core :as c]
             [cljs.compiler :as comp]
             [clojure.string :as str]
             [applied-science.js-interop.destructure :as d]
-            [applied-science.js-interop.inference :as inf]))
+            [applied-science.js-interop.inference :as inf]
+            [applied-science.js-interop.macros :as m]))
 
 (def ^:private reflect-property 'js/goog.reflect.objectProperty)
 (def ^:private lookup-sentinel 'applied-science.js-interop.impl/lookup-sentinel)
@@ -65,10 +66,11 @@
 ;;
 ;; Unchecked operations
 
-(defmacro in? [k obj]
+(m/defmacro-cljs in?
+  [k obj]
   `(~'applied-science.js-interop.impl/in?* ~k ~obj))
 
-(defmacro unchecked-get
+(m/defmacro-cljs unchecked-get
   ([obj k]
    (if (dot-sym? k)
      `(~(dot-get k) ~obj)
@@ -82,10 +84,12 @@
           (unchecked-get ~o ~k-sym)
           ~not-found)))))
 
-(defmacro !get [& args]
+(m/defmacro-cljs !get
+  [& args]
   `(unchecked-get ~@args))
 
-(defmacro unchecked-set [obj & keyvals]
+(m/defmacro-cljs unchecked-set
+  [obj & keyvals]
   (c/let [o (gensym "obj")]
     `(~*let [~o ~obj]
        ~@(for [[k v] (partition 2 keyvals)]
@@ -94,14 +98,14 @@
              `(~'cljs.core/unchecked-set ~o ~(wrap-key &env nil k) ~v)))
        ~o)))
 
-(defmacro !set [obj & keyvals]
+(m/defmacro-cljs !set [obj & keyvals]
   `(applied-science.js-interop/unchecked-set ~obj ~@keyvals))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Lookups
 
-(defmacro contains?
+(m/defmacro-cljs contains?
   [obj k]
   (c/let [o (gensym "obj")]
     `(~*let [~o ~obj]
@@ -120,13 +124,13 @@
           (cljs.core/unchecked-get ~o ~k-sym)
           ~not-found)))))
 
-(defmacro get
+(m/defmacro-cljs get
   ([obj k]
    (get* &env obj k))
   ([obj k not-found]
    (get* &env obj k not-found)))
 
-(defmacro get-in
+(m/defmacro-cljs get-in
   ([obj ks]
    (reduce (partial get* &env) obj ks))
   ([obj ks not-found]
@@ -142,11 +146,12 @@
           out#))
      `(~'applied-science.js-interop.impl/get-in* ~obj ~(wrap-keys ks) ~not-found))))
 
-(defmacro !get-in
+(m/defmacro-cljs !get-in
   [obj ks]
   (reduce (c/fn [out k] `(!get ~out ~k)) obj ks))
 
-(defmacro select-keys [obj ks]
+(m/defmacro-cljs select-keys
+  [obj ks]
   (if (vector? ks)
     (c/let [o (gensym "obj")
             out (gensym "out")]
@@ -167,7 +172,7 @@
 
 ;; helpers
 
-(defmacro some-or
+(m/defmacro-cljs some-or
   "Like `or` but switches on `some?` instead of truthiness."
   [x y]
   `(if (some? ~x) ~x ~y))
@@ -188,14 +193,14 @@
 
 ;; core operations
 
-(defmacro assoc! [obj & keyvals]
+(m/defmacro-cljs assoc! [obj & keyvals]
   (c/let [o (gensym "obj")]
     `(~*let [~o ~obj]
        (-> (some-or ~o ~empty-obj)
            ~@(for [[k v] (partition 2 keyvals)]
                `(!set ~k ~v))))))
 
-(defmacro assoc-in! [obj ks v]
+(m/defmacro-cljs assoc-in! [obj ks v]
   (if (vector? ks)
     (c/let [o (gensym "obj")]
       `(~*let [~o ~obj
@@ -204,21 +209,21 @@
          ~o))
     `(~'applied-science.js-interop.impl/assoc-in* ~obj ~(wrap-keys ks) ~v)))
 
-(defmacro !assoc-in! [obj ks v]
+(m/defmacro-cljs !assoc-in! [obj ks v]
   `(~*let [obj# ~obj]
      (-> (!get-in obj# ~(drop-last ks))
          (!set ~(last ks) ~v))
      obj#))
 
-(defmacro !update [obj k f & args]
+(m/defmacro-cljs !update [obj k f & args]
   `(~*let [o# ~obj]
      (!set o# ~k (~f (!get o# ~k) ~@args))))
 
-(defmacro update! [obj k f & args]
+(m/defmacro-cljs update! [obj k f & args]
   `(~*let [o# ~obj]
      (!update (some-or o# ~empty-obj) ~k ~f ~@args)))
 
-(defmacro update-in! [obj ks f & args]
+(m/defmacro-cljs update-in! [obj ks f & args]
   (if (vector? ks)
     (c/let [o (gensym "obj")]
       `(~*let [~o ~obj
@@ -232,13 +237,13 @@
 ;;
 ;; Array operations
 
-(defmacro push! [array v]
+(m/defmacro-cljs push! [array v]
   (c/let [sym (with-meta (gensym "array") {:tag 'js/Array})]
     `(~*let [~sym ~array]
        (~'.push ~sym ~v)
        ~sym)))
 
-(defmacro unshift! [array v]
+(m/defmacro-cljs unshift! [array v]
   `(doto ~array
      (~'.unshift ~v)))
 
@@ -246,26 +251,26 @@
 ;;
 ;; Function operations
 
-(defmacro call [obj k & args]
+(m/defmacro-cljs call [obj k & args]
   (if (dot-sym? k)
     `(~(dot-call k) ~obj ~@args)
     `(~*let [obj# ~obj
              ^function f# (!get obj# ~k)]
        (.call f# obj# ~@args))))
 
-(defmacro call-in [obj ks & args]
+(m/defmacro-cljs call-in [obj ks & args]
   (if (vector? ks)
     `(~*let [parent# (!get-in ~obj ~(pop ks))
              ^function f# (!get parent# ~(peek ks))]
        (.call f# parent# ~@args))
     `(~'applied-science.js-interop.impl/apply-in* ~obj ~(wrap-keys ks) (cljs.core/array ~@args))))
 
-(defmacro apply [obj k arg-array]
+(m/defmacro-cljs apply [obj k arg-array]
   `(~*let [obj# ~obj
            ^function f# (!get obj# ~k)]
      (.apply f# obj# ~arg-array)))
 
-(defmacro apply-in [obj ks arg-array]
+(m/defmacro-cljs apply-in [obj ks arg-array]
   (if (vector? ks)
     `(~*let [parent# (!get-in ~obj ~(pop ks))
              ^function f# (!get parent# ~(peek ks))]
@@ -287,7 +292,7 @@
     (vary-meta (list* 'js* keyvals-str (map second keyvals))
                assoc :tag 'object)))
 
-(defmacro obj
+(m/defmacro-cljs obj
   [& keyvals]
   (c/let [kvs (partition 2 keyvals)]
     (if (every? #(or (keyword? %)
@@ -316,7 +321,7 @@
          (list* 'cljs.core/array (mapv lit* x))
          :else x)))
 
-(defmacro lit
+(m/defmacro-cljs lit
   "Recursively converts literal Clojure maps/vectors into JavaScript object/array expressions
    (using j/obj and cljs.core/array)"
   [form]
@@ -332,12 +337,16 @@
 
    (let [^:js {:keys [a]} obj] …)"
   [bindings & body]
-  (if (empty? bindings)
-    `(do ~@body)
-    `(~'clojure.core/let ~(vec (d/destructure (take 2 bindings)))
-       (~'applied-science.js-interop/let
-         ~(vec (drop 2 bindings))
-         ~@body))))
+  (m/target
+    :cljs
+    (if (empty? bindings)
+      `(do ~@body)
+      `(~'clojure.core/let ~(vec (d/destructure (take 2 bindings)))
+         (~'applied-science.js-interop/let
+           ~(vec (drop 2 bindings))
+           ~@body)))
+    :clj
+    `(clojure.core/let ~bindings ~@body)))
 
 (defmacro fn
   "`fn` with argument destructuring that supports js property and array access.
@@ -345,10 +354,18 @@
 
    (fn [^:js {:keys [a]}] …)"
   [& args]
-  (cons 'clojure.core/fn (d/destructure-fn-args args)))
+  (m/target
+    :cljs
+    (cons 'clojure.core/fn (d/destructure-fn-args args))
+    :clj
+    `(clojure.core/fn ~@args)))
 
 (defmacro defn
   "`defn` with argument destructuring that supports js property and array access.
    Use ^:js metadata on binding forms to invoke."
   [& args]
-  (cons 'clojure.core/defn (d/destructure-fn-args args)))
+  (m/target
+    :cljs
+    (cons 'clojure.core/defn (d/destructure-fn-args args))
+    :clj
+    `(clojure.core/defn ~@args)))

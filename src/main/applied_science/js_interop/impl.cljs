@@ -1,5 +1,4 @@
-(ns applied-science.js-interop.impl
-  (:require-macros [applied-science.js-interop :as j]))
+(ns applied-science.js-interop.impl)
 
 (def lookup-sentinel #js{})
 
@@ -41,7 +40,7 @@
    (if-some [last-obj (get-value-by-keys obj (butlast ks*))]
      (let [k (peek ks*)]
        (if (js-in k last-obj)
-         (j/unchecked-get last-obj k)
+         (unchecked-get last-obj k)
          not-found))
      not-found)))
 
@@ -57,14 +56,14 @@
                                           (unchecked-get obj k))))) #js {})))
 (defn assoc-in*
   [obj ks* v]
-  (let [obj (j/some-or obj #js{})
+  (let [obj (if (some? obj) obj #js{})
         inner-obj (reduce get+! obj (butlast ks*))]
     (unchecked-set inner-obj (peek ks*) v)
     obj))
 
 (defn update-in*
   [obj ks* f args]
-  (let [obj (j/some-or obj #js{})
+  (let [obj (if (some? obj) obj #js{})
         last-k* (peek ks*)
         inner-obj (reduce get+! obj (butlast ks*))
         old-val (unchecked-get inner-obj last-k*)]
