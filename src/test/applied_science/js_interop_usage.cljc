@@ -6,12 +6,9 @@
 ;; sample operations, used to inspect generated code.
 ;;
 ;; to compile, run:
-;; clj -A:usage -m cljs.main -o out/USAGE.js -co '{:pseudo-names true :optimizations :advanced :infer-externs true}' -c applied-science.js-interop-usage
-;;
-;; compiled js will be in:
-;;
-;; out/applied_science/js_interop_usage   (uncompressed)
-;; out/USAGE.js                           (advanced-compiled with pseudo-names)
+;;   yarn usage
+;; then inspect:
+;;   out/shadow-usage.js (:advanced compiled, with pseudo-names)
 
 (defn log [x]
   #?(:cljs

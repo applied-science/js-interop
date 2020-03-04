@@ -18,4 +18,9 @@
    :ns-regexp        "-test$"
    :autorun          true
    :closure-defines  {applied-science.js-interop-test/advanced? true}
-   :compiler-options {:optimizations :advanced}}}}
+   :compiler-options {:optimizations :advanced}}
+  :usage
+  {:target :browser
+   :output-dir "out"
+   :modules {:shadow-usage {:entries [applied-science.js-interop-usage]}}
+   :compiler-options {:pseudo-names true}}}}
