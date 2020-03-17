@@ -160,8 +160,8 @@
    existing properties, moving left to right. Returns `obj`.
    An empty starting object is provided if `obj` is nil.
   ```
-  (j/extend o other)
-  (j/extend o other #js{:x 1})
+  (j/extend! o other)
+  (j/extend! o other #js{:x 1})
   ```
   Not IE6-friendly"
   ([obj] obj)
