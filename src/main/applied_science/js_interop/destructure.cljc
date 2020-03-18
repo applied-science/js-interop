@@ -31,10 +31,11 @@
   (c/let [bents (partition 2 bindings)
           pb (c/fn pb [bvec b v]
                (let [b-meta (meta b)
-                     js? (cond (:clj b-meta) false
-                               *js?* true
-                               :else (true? (:js b-meta)))]
-                 (binding [*js?* (if (false? (:js/recursive? b-meta))
+                     js? (boolean (cond (:clj b-meta) false
+                                        *js?* true
+                                        :else (or (:js b-meta)
+                                                  (:js/shallow b-meta))))]
+                 (binding [*js?* (if (:js/shallow b-meta)
                                    false
                                    js?)]
                    (c/let [pvec
