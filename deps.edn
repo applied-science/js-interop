@@ -1,9 +1,7 @@
 {:paths
  ["src/main"]
 
- :deps
- {org.clojure/clojure       {:mvn/version "1.10.0"}
-  org.clojure/clojurescript {:mvn/version "1.10.597"}}
+ :deps {}
 
  :aliases
 
@@ -14,7 +12,9 @@
                  "out/test-2/gen"]
    :extra-deps  {olical/cljs-test-runner {:mvn/version "3.5.0"}}
    :main-opts   ["-m" "cljs-test-runner.main"]}
-
   :release
   {:extra-deps {mhuebert/deps-library {:mvn/version "0.2.0"}}
-   :main-opts  ["-m" "deps-library.release"]}}}
+   :main-opts  ["-m" "deps-library.release"]}
+  :dev
+  {:extra-deps {org.clojure/clojure       {:mvn/version "1.10.0"}
+                org.clojure/clojurescript {:mvn/version "1.10.753"}}}}}

@@ -1,4 +1,4 @@
-# js-interop ![latest release](https://img.shields.io/github/tag/appliedsciencestudio/js-interop.svg?color=%23309631&label=release) [![tests passing?](https://circleci.com/gh/appliedsciencestudio/js-interop.svg?style=svg)](https://circleci.com/gh/appliedsciencestudio/js-interop)
+# js-interop ![latest release](https://img.shields.io/github/tag/applied-science/js-interop.svg?color=%23309631&label=release) [![tests passing?](https://circleci.com/gh/applied-science/js-interop.svg?style=svg)](https://circleci.com/gh/applied-science/js-interop)
 
 A JavaScript-interop library for ClojureScript.
 
