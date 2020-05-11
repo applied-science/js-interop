@@ -1,8 +1,10 @@
 {:paths
  ["src/main"]
 
- :aliases
+ :deps
+ {appliedscience/js-interop {:mvn/version "0.2.6-RENAMED"}}
 
+ :aliases
  {:usage
   {:extra-paths ["src/test"]}
   :test
