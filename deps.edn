@@ -2,7 +2,7 @@
  ["src/main"]
 
  :deps
- {appliedscience/js-interop {:mvn/version "0.2.6-RENAMED"}}
+ {appliedscience/js-interop {:mvn/version "0.2.6-MOVED"}}
 
  :aliases
  {:usage
