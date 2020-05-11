@@ -1,8 +1,6 @@
 {:paths
  ["src/main"]
 
- :deps {}
-
  :aliases
 
  {:usage
@@ -13,8 +11,8 @@
    :extra-deps  {olical/cljs-test-runner {:mvn/version "3.5.0"}}
    :main-opts   ["-m" "cljs-test-runner.main"]}
   :release
-  {:extra-deps {mhuebert/deps-library {:mvn/version "0.2.0"}}
-   :main-opts  ["-m" "deps-library.release"]}
+  {:extra-deps {applied-science/deps-library {:mvn/version "0.4.0"}}
+   :main-opts  ["-m" "applied-science.deps-library"]}
   :dev
   {:extra-deps {org.clojure/clojure       {:mvn/version "1.10.0"}
                 org.clojure/clojurescript {:mvn/version "1.10.753"}}}}}
