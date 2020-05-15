@@ -300,6 +300,13 @@
 
 ;; Nested literals (maps/vectors become objects/arrays)
 
+(c/defn litval* [v]
+  (if (keyword? v)
+    (cond->> (name v)
+             (namespace v)
+             (str (namespace v) "/"))
+    v))
+
 (c/defn lit*
   "Recursively converts literal Clojure maps/vectors into JavaScript object/array expressions
 
@@ -307,14 +314,15 @@
   ([x]
    (lit* nil x))
   ([{:as   opts
-     :keys [keyfn]
-     :or   {keyfn identity}} x]
+     :keys [keyfn valfn]
+     :or   {keyfn identity
+            valfn litval*}} x]
    (cond (map? x)
          (list* 'applied-science.js-interop/obj
                 (reduce-kv #(conj %1 (keyfn %2) (lit* opts %3)) [] x))
          (vector? x)
          (list* 'cljs.core/array (mapv lit* x))
-         :else x)))
+         :else (valfn x))))
 
 (defmacro lit
   "Recursively converts literal Clojure maps/vectors into JavaScript object/array expressions
