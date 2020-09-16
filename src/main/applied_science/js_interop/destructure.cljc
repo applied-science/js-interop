@@ -32,9 +32,11 @@
           pb (c/fn pb [bvec b v]
                (let [b-meta (meta b)
                      js? (boolean (cond (:clj b-meta) false
+                                        (= 'clj (:tag b-meta)) false
                                         *js?* true
                                         :else (or (:js b-meta)
-                                                  (:js/shallow b-meta))))]
+                                                  (:js/shallow b-meta)
+                                                  (= 'js (:tag b-meta)))))]
                  (binding [*js?* (if (:js/shallow b-meta)
                                    false
                                    js?)]
