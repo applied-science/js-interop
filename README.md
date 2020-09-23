@@ -6,7 +6,7 @@ A JavaScript-interop library for ClojureScript.
 
 1. Operations that mirror behaviour of core Clojure functions like `get`, `get-in`, `assoc!`, etc.
 2. Keys are parsed at compile-time, and support both static keys (via keywords) and compiler-renamable forms (via dot-properties, eg `.-someAttribute`)
-    
+
 ## Quick Example
 
 ```clj
@@ -53,11 +53,11 @@ A JavaScript-interop library for ClojureScript.
 
 ```clj
 ;; lein or boot
-[appliedscience/js-interop "..."]
+[applied-science/js-interop "..."]
 ```
 ```clj
 ;; deps.edn
-appliedscience/js-interop {:mvn/version "..."}
+applied-science/js-interop {:mvn/version "..."}
 ```
 
 
