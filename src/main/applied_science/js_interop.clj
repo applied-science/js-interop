@@ -121,12 +121,19 @@
           ~not-found)))))
 
 (defmacro get
+  ([k] `(c/fn [obj#] (cljs.core/unchecked-get obj# ~(wrap-key &env nil k))))
   ([obj k]
    (get* &env obj k))
   ([obj k not-found]
    (get* &env obj k not-found)))
 
 (defmacro get-in
+  ([ks]
+   `(c/let [ks# ~(if (vector? ks)
+                   (mapv #(wrap-key &env nil %) ks)
+                   `(wrap-keys ks))]
+      (c/fn [obj#]
+        (~'applied-science.js-interop.impl/get-in* obj# ks#))))
   ([obj ks]
    (reduce (partial get* &env) obj ks))
   ([obj ks not-found]

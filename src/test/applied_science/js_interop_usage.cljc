@@ -113,6 +113,12 @@
      (wrap "select-keys-2"
            (j/select-keys o [.-something]))
 
+     (wrap "getters-1"
+           (j/get .-abracadabra))
+
+     (wrap "getters-2"
+           (j/get :abracabra))
+
 
      (goog-define debug false)
      ;; sanity-check: both of the following are DCE'd, the ^boolean hint is unnecessary

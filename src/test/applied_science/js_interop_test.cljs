@@ -709,7 +709,13 @@
       (is (advanced-not= 10 aaaaa)
           "let js-destructure, static key does not find renamed property"))
 
-    (is (= [10 20 30 40] (j/let [a 10 b 20 ^js [c d] #js [30 40]] [a b c d])))))
+    (is (= [10 20 30 40] (j/let [a 10 b 20 ^js [c d] #js [30 40]] [a b c d])))
+
+    (j/let [obj (j/obj .-aaaaa 10 :bbbbb 20 "ccccc" 30)]
+      (is (= [10 20 30]
+             ((juxt (j/get .-aaaaa)
+                    (j/get :bbbbb)
+                    (j/get "ccccc")) obj))))))
 
 (comment
   (let [arr (rand-nth [#js[1 2 3 4]])]

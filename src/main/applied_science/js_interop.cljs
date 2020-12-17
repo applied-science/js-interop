@@ -34,6 +34,7 @@
   (j/get o :k)
   (j/get o .-k)
   ```"
+  ([k] (fn [obj] (j/get obj k)))
   ([obj k]
    (j/get obj k))
   ([obj k not-found]
@@ -48,6 +49,9 @@
    (j/get-in o [:x :y] :fallback-value)
    (j/get-in o [.-x .-y] :fallback-value)
    ```"
+  ([ks]
+   (let [ks (mapv impl/wrap-key ks)]
+     (fn [obj] (impl/get-in* obj ks))))
   ([obj ks]
    (impl/get-in* obj (mapv impl/wrap-key ks)))
   ([obj ks not-found]
