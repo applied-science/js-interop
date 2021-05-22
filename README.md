@@ -238,7 +238,7 @@ they are suitable for threading.
 |  | _arguments_| _examples_ |
 |-------------------|-------------------------------------------|----------------------------------------------------------------|
 | **j/get**         | [obj key]<br/>[obj key not-found]         | `(j/get o :x)`<br/>`(j/get o :x :default-value)`<br/>`(j/get o .-x)`|
-| **j/get-in**      | [obj path]<br/>[obj path not-found]       | `(j/get o [:x :y])`<br/>`(j/get o [:x :y] :default-value)`         |
+| **j/get-in**      | [obj path]<br/>[obj path not-found]       | `(j/get-in o [:x :y])`<br/>`(j/get-in o [:x :y] :default-value)`         |
 | **j/select-keys** | [obj keys]                                | `(j/select-keys o [:a :b :c])`                                   |
 | **j/assoc!**      | [obj key value]<br/>[obj key value & kvs] | `(j/assoc! o :a 1)`<br/>`(j/assoc! o :a 1 :b 2)`                   |
 | **j/assoc-in!**   | [obj path value]                          | `(j/assoc-in! o [:x :y] 100)`                                    |
