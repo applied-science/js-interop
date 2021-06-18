@@ -79,4 +79,17 @@
         f (unchecked-get parent (peek ks*))]
     (.apply f parent arg-array)))
 
+(defn- paths [m]
+  (letfn [(paths* [ps ks m]
+            (reduce-kv
+              (fn [ps k v]
+                (if (map? v)
+                  (paths* ps (conj ks k) v)
+                  (conj ps (conj ks k))))
+              ps
+              m))]
+    (paths* () [] m)))
 
+(defn merge* [obj m*]
+  (doseq [p (paths m*)]
+    (assoc-in* obj (mapv wrap-key p) (get-in m* p))))

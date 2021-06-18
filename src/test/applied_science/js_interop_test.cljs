@@ -330,6 +330,9 @@
 
         (j/assoc-in! obj [.-ddddd .-eeeee] "f")
         (is (= (j/get-in obj [.-ddddd .-eeeee]) "f"))
+        
+        (j/merge! obj {:x {:y "T"}})
+        (is (= (j/get-in obj [.-x .-y]) "T"))
 
         (j/update-in! obj [.-ddddd .-eeeee] str "f")
         (is (= (j/get-in obj [.-ddddd .-eeeee]) "ff"))

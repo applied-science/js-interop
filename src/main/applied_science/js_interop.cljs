@@ -128,6 +128,17 @@
   [obj ks v]
   (impl/assoc-in* obj (mapv impl/wrap-key ks) v))
 
+(defn merge!
+  "Mutates the value in a nested object structure, where m is a
+  nested hash map.
+
+  ```
+  (j/merge! o {:style {:width 10
+                       :height 20}})
+  ```"
+  [obj m]
+  (impl/merge* obj m))
+
 (defn update!
   "'Updates' a value in a JavaScript object, where k is a key and
   f is a function that will take the old value and any supplied
