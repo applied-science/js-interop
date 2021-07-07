@@ -633,7 +633,25 @@
     (is (array? (j/lit [])))
     (is (object? (first (j/lit [{}]))))
     (is (array? (-> (j/lit [{:a [{:b []}]}])
-                    (j/get-in [0 :a 0 :b])))))
+                    (j/get-in [0 :a 0 :b]))))
+
+    (is (clj= (j/lit [1 2 ~@(map inc [1 2 3 4])])
+              (j/lit [1 2 ~@(list 2 3 4 5)])
+              (j/lit [1 2 ~@[2 3 4 5]])
+              (j/lit [1 2 ~@[2 3 4 ~@[5]]])
+              [1 2 2 3 4 5])
+        "unquote-splice with lists and vectors")
+
+    (let [more [3 4]]
+      (is (clj= (j/lit {:x [1 2 ~@more]})
+                {:x [1 2 3 4]})
+          "unquote-splice nested in an object"))
+
+    (is (clj= (j/lit [1 2 ~@ #js[5 6]])
+              (j/lit [1 2 ~@(array 5 6)])
+              [1 2 5 6])
+        "unquote-splice with arrays")
+    )
 
   (testing "destructure"
 
@@ -709,8 +727,9 @@
       (is (advanced-not= 10 aaaaa)
           "let js-destructure, static key does not find renamed property"))
 
-    (is (= [10 20 30 40] (j/let [a 10 b 20 ^js [c d] #js [30 40]] [a b c d])))
+    (is (= [10 20 30 40] (j/let [a 10 b 20 ^js [c d] #js [30 40]] [a b c d]))))
 
+  (testing "getter fns"
     (j/let [obj (j/lit {.-aaaaa 10
                         :bbbbb 20
                         "ccccc" 30

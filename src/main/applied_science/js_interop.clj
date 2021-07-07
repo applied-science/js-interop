@@ -314,6 +314,11 @@
              (str (namespace v) "/"))
     v))
 
+(declare lit*)
+
+(defn- spread? [x] (and (seq? x)
+                        (= 'clojure.core/unquote-splicing (first x))))
+
 (c/defn lit*
   "Recursively converts literal Clojure maps/vectors into JavaScript object/array expressions
 
@@ -328,7 +333,14 @@
          (list* 'applied-science.js-interop/obj
                 (reduce-kv #(conj %1 (keyfn %2) (lit* opts %3)) [] x))
          (vector? x)
-         (list* 'cljs.core/array (mapv lit* x))
+         (if (some spread? x)
+           (reduce (c/fn [out x]
+                     (if (spread? x)
+                       `(reduce ~'applied-science.js-interop/push! ~out ~(lit* (second x)))
+                       `(~'applied-science.js-interop/push! ~out ~(lit* x))))
+                   `(~'cljs.core/array)
+                   x)
+           (list* 'cljs.core/array (mapv lit* x)))
          :else (valfn x))))
 
 (defmacro lit
