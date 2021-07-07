@@ -711,11 +711,16 @@
 
     (is (= [10 20 30 40] (j/let [a 10 b 20 ^js [c d] #js [30 40]] [a b c d])))
 
-    (j/let [obj (j/obj .-aaaaa 10 :bbbbb 20 "ccccc" 30)]
-      (is (= [10 20 30]
+    (j/let [obj (j/lit {.-aaaaa 10
+                        :bbbbb 20
+                        "ccccc" 30
+                        :ddddd {.-eeeee 40}})]
+      (is (= [10 20 30 40]
              ((juxt (j/get .-aaaaa)
                     (j/get :bbbbb)
-                    (j/get "ccccc")) obj))))))
+                    (j/get "ccccc")
+                    (j/get-in [:ddddd .-eeeee])) obj))
+          "Getter functions"))))
 
 (comment
   (let [arr (rand-nth [#js[1 2 3 4]])]
