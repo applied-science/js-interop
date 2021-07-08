@@ -338,11 +338,11 @@
          (if (some spread? x)
            (c/let [sym (tagged-sym 'js/Array)]
              `(c/let [~sym (~'cljs.core/array)]
-                ~@(for [y x]
-                    (if (spread? y)
-                      `(doseq [x# ~(lit* (second x))]
+                ~@(for [x' x]
+                    (if (spread? x')
+                      `(doseq [x# ~(lit* (second x'))]
                          (.push ~sym x#))
-                      `(.push ~sym ~(lit* y))))
+                      `(.push ~sym ~(lit* x'))))
                 ~sym))
            (list* 'cljs.core/array (mapv lit* x)))
          :else (valfn x))))
