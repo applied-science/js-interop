@@ -318,8 +318,13 @@
 
 (declare lit*)
 
-(defn- spread? [x] (and (seq? x)
-                        (= 'clojure.core/unquote-splicing (first x))))
+(defn- spread
+  "For ~@spread values, returns the unwrapped value,
+   otherwise returns nil."
+  [x]
+  (when (and (seq? x)
+             (= 'clojure.core/unquote-splicing (first x)))
+    (second x)))
 
 (c/defn lit*
   "Recursively converts literal Clojure maps/vectors into JavaScript object/array expressions
@@ -328,21 +333,31 @@
   ([x]
    (lit* nil x))
   ([{:as opts
-     :keys [keyfn valfn]
+     :keys [keyfn valfn env]
      :or {keyfn identity
           valfn litval*}} x]
    (cond (map? x)
          (list* 'applied-science.js-interop/obj
                 (reduce-kv #(conj %1 (keyfn %2) (lit* opts %3)) [] x))
          (vector? x)
-         (if (some spread? x)
+         (if (some spread x)
            (c/let [sym (tagged-sym 'js/Array)]
              `(c/let [~sym (~'cljs.core/array)]
-                ~@(for [x' x]
-                    (if (spread? x')
-                      `(doseq [x# ~(lit* (second x'))]
-                         (.push ~sym x#))
-                      `(.push ~sym ~(lit* x'))))
+                ;; handling the spread operator
+                ~@(for [x'
+                        ;; chunk array members into spreads & non-spreads,
+                        ;; so that sequential non-spreads can be lumped into
+                        ;; a single .push
+                        (->> (partition-by spread x)
+                             (mapcat (clojure.core/fn [x]
+                                       (if (spread (first x))
+                                         x
+                                         (list x)))))]
+                    (if-let [x' (spread x')]
+                      (if (and env (inf/tag-in? env '#{array} x'))
+                        `(.forEach ~x' (c/fn [x#] (.push ~sym x#)))
+                        `(doseq [x# ~(lit* x')] (.push ~sym x#)))
+                      `(.push ~sym ~@(map lit* x'))))
                 ~sym))
            (list* 'cljs.core/array (mapv lit* x)))
          :else (valfn x))))
@@ -351,7 +366,7 @@
   "Recursively converts literal Clojure maps/vectors into JavaScript object/array expressions
    (using j/obj and cljs.core/array)"
   [form]
-  (lit* form))
+  (lit* {:env &env} form))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

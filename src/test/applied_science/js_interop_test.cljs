@@ -4,6 +4,7 @@
                                         are
                                         testing
                                         deftest]]
+            [applied-science.js-interop.inference :as inf]
             [clojure.pprint :refer [pprint]]
             [goog.object :as gobj]
             [goog.reflect :as reflect]))

@@ -24,7 +24,7 @@
        (ana/infer-tag env)
        (normalize-tag)))
 
-(defn tag-in? [env form tags]
+(defn tag-in? [env tags form]
   (when env
     (some->> (infer-tags env form)
              (within? tags))))

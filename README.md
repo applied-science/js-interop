@@ -98,6 +98,23 @@ Reading functions include `get`, `get-in`, `select-keys` and follow Clojure look
 (j/select-keys obj [:x :z])
 ```
 
+`get` and `get-in` return "getter" functions when called with one argument:
+
+```clj
+(j/get :x) ;; returns a function that will read key `x`
+```
+
+This can be useful for various kinds of functional composition (eg. `juxt`):
+
+```clj
+
+(map (j/get :x) some-seq) ;; returns item.x for each item
+
+(map (juxt (j/get :x) (j/get :y)) some-seq) ;; returns [item.x, item.y] for each item
+
+
+```
+
 The `lookup` function wraps an object with an `ILookup` implementation, suitable for destructuring:
 
 ```clj
@@ -211,13 +228,25 @@ Wrapped versions of `push!` and `unshift!` operate on arrays, and return the mut
 
 ### Object/array creation 
 
-`j/obj` returns a literal js object for provided keys/values, `j/lit` returns literal js objects/arrays for an arbitrarily nested structure of maps/vectors.
+`j/obj` returns a literal js object for provided keys/values:
 
 ```clj
 (j/obj :a 1 .-b 2) ;; can use renamable keys
-(j/lit {:a 1 .-b [2 3]})
-
 ```
+
+ `j/lit` returns literal js objects/arrays for an arbitrarily nested structure of maps/vectors:
+
+```clj
+(j/lit {:a 1 .-b [2 3]})
+```
+
+`j/lit` supports unquote-splicing (similar to es6 spread):
+
+```clj
+(j/lit [1 2 ~@some-sequential-value])
+```
+
+`~@` is compiled to a loop of `.push` invocations, using `.forEach` when we infer the value to be an array, otherwise `doseq`.
 
 ### Threading
 
@@ -260,3 +289,7 @@ To run the tests:
 ```clj
 yarn test;
 ```
+
+## Patronage
+
+Special thanks to [NextJournal](https://nextjournal.com) for supporting the maintenance of this library.
