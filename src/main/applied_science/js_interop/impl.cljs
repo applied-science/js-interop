@@ -1,8 +1,6 @@
 (ns applied-science.js-interop.impl
   (:require-macros [applied-science.js-interop :as j]))
 
-(def lookup-sentinel #js{})
-
 (defn wrap-key
   "Returns `k` or, if it is a keyword, its name."
   [k]

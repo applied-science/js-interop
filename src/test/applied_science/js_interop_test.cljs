@@ -52,6 +52,21 @@
     (apply j/get [#js{:x nil} :x 10])
     nil
 
+    ;; string - missing property
+    (j/get "a" :x)
+    (apply j/get ["a" :x])
+    js/undefined
+
+    ;; string - missing property
+    (j/get "a" :x :y)
+    (apply j/get ["a" :x :y])
+    :y
+
+    ;; string - missing property
+    (j/get "a" :charAt)
+    (apply j/get ["a" :charAt])
+    js/String.prototype.charAt
+
     ;; get-in, nil root
     (j/get-in nil [:x])
     (apply j/get-in [nil [:x]])

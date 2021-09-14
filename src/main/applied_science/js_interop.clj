@@ -9,7 +9,6 @@
             [applied-science.js-interop.inference :as inf]))
 
 (def ^:private reflect-property 'js/goog.reflect.objectProperty)
-(def ^:private lookup-sentinel 'applied-science.js-interop.impl/lookup-sentinel)
 (def ^:private wrap-key* 'applied-science.js-interop.impl/wrap-key)
 (def ^:private empty-obj '(cljs.core/js-obj))
 (def ^:private *let 'clojure.core/let)
@@ -110,18 +109,20 @@
 
 (defn- get*
   ([env obj k]
-   (get* env obj k 'js/undefined))
+   (c/let [o (gensym "obj")]
+     `(~*let [~o ~obj]
+       (if (some? ~o)
+         (cljs.core/unchecked-get ~o ~(wrap-key env o k))
+         ~'js/undefined))))
   ([env obj k not-found]
-   (c/let [o (gensym "obj")
-           k-sym (gensym "k")]
-     `(~*let [~o ~obj
-              ~k-sym ~(wrap-key env o k)]
-       (if (contains? ~o ~k-sym)
-         (cljs.core/unchecked-get ~o ~k-sym)
-         ~not-found)))))
+   `(~*let [val# ~(get* env obj k)]
+     (if (cljs.core/undefined? val#)
+       ~not-found
+       val#))))
 
 (defmacro get
-  ([k] `(c/fn [obj#] (cljs.core/unchecked-get obj# ~(wrap-key &env nil k))))
+  ([k]
+   `(c/fn [obj#] (get obj# ~k)))
   ([obj k]
    (get* &env obj k))
   ([obj k not-found]
@@ -141,10 +142,10 @@
      `(~*let [out# ~(reduce
                      (c/fn [out k]
                        `(~*let [out# ~out]
-                         (if (identical? out# ~lookup-sentinel)
-                           ~lookup-sentinel
-                           (get out# ~k ~lookup-sentinel)))) obj ks)]
-       (if (identical? ~lookup-sentinel out#)
+                         (if (cljs.core/undefined? out#)
+                           ~'js/undefined
+                           (get out# ~k)))) obj ks)]
+       (if (cljs.core/undefined? out#)
          ~not-found
          out#))
      `(~'applied-science.js-interop.impl/get-in* ~obj ~(wrap-keys ks) ~not-found))))
