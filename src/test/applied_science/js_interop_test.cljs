@@ -62,7 +62,7 @@
     (apply j/get ["a" :x :y])
     :y
 
-    ;; string - missing property
+    ;; string - existing property
     (j/get "a" :charAt)
     (apply j/get ["a" :charAt])
     js/String.prototype.charAt
