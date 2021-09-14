@@ -76,7 +76,7 @@ as `goog.object/get`, `goog.object/getValueByKeys`, and `goog.object/set`. These
 performant and useful but they do not offer a Clojure-centric api. Keys need to be passed in as strings,
 and return values from mutations are not amenable to threading. The `goog.object` namespace has published breaking changes as recently as [2017](https://github.com/google/closure-library/releases/tag/v20170910).
 
-One third-party library commonly recommended for JavaScript interop is [cljs-oops](https://github.com/binaryage/cljs-oops). This solves the renaming problem and is highly performant, but the string-oriented api diverges far from Clojure norms.
+One third-party library commonly recommended for JavaScript interop is [cljs-oops](https://github.com/binaryage/cljs-oops). This solves the renaming problem and is highly performant, but the string-oriented api diverges from Clojure norms.
 
 Neither library lets you choose to allow a given key to be renamed. For that, you must fall back to host-interop (dot) syntax, which has a different API, so the structure of your code may need to change based on unrelated compiler issues.
 
@@ -112,8 +112,9 @@ This can be useful for various kinds of functional composition (eg. `juxt`):
 
 (map (juxt (j/get :x) (j/get :y)) some-seq) ;; returns [item.x, item.y] for each item
 
-
 ```
+
+To cohere with Clojure semantics, `j/get` and `j/get-in` return `nil` if reading from a `nil` object instead of throwing an error. Unchecked variants (slightly faster) are provided as `j/!get` and `j/!get-in`. These will throw when attempting to read a key from an undefined/null object.
 
 The `lookup` function wraps an object with an `ILookup` implementation, suitable for destructuring:
 
@@ -124,27 +125,27 @@ The `lookup` function wraps an object with an `ILookup` implementation, suitable
 
 ### Destructuring
 
-With `j/let`, `j/defn` and `j/fn`, opt-in to js-interop lookups by adding `^:js` in front of a
+With `j/let`, `j/defn` and `j/fn`, opt-in to js-interop lookups by adding `^js` in front of a
 binding form:
 
 ```clj
-(j/let [^:js {:keys [x y z]} obj  ;; static keys using keywords
-        ^:js {:syms [x y z]} obj] ;; renamable keys using symbols
+(j/let [^js {:keys [x y z]} obj  ;; static keys using keywords
+        ^js {:syms [x y z]} obj] ;; renamable keys using symbols
   ...)
 
-(j/fn [^:js [n1 n2 n3 & nrest]] ;; array access using aget, and .slice for &rest parameters
+(j/fn [^js [n1 n2 n3 & nrest]] ;; array access using aget, and .slice for &rest parameters
   ...)
 
-(j/defn my-fn [^:js {:keys [a b c]}]
+(j/defn my-fn [^js {:keys [a b c]}]
   ...)
 
 ```
 
-The opt-in `^:js` syntax was selected so that bindings behave exactly like regular Clojure
-wherever `^:js` is not explicitly invoked, and js-lookups are immediately recognizable
-even in a long `let` binding.
+The opt-in `^js` syntax was selected so that bindings behave like regular Clojure
+wherever `^js` is not explicitly invoked, and js-lookups are immediately recognizable
+even in a long `let` binding. (Note: the keyword metadata `^:js` is also accepted.)
 
-`^:js` is recursive. At any depth, you may use `^:clj` to opt-out.
+`^js` is recursive. At any depth, you may use `^clj` to opt-out.
 
 
 ### Mutation
