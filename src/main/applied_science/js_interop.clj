@@ -1,7 +1,7 @@
 (ns applied-science.js-interop
   (:refer-clojure :exclude [get get-in contains? select-keys assoc!
                             unchecked-get unchecked-set apply extend
-                            let fn defn])
+                            let fn defn spread])
   (:require [clojure.core :as c]
             [cljs.compiler :as comp]
             [clojure.string :as str]
