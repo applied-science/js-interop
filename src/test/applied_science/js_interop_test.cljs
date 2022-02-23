@@ -279,10 +279,10 @@
        JavaScript coerces `nil` to the string 'null'.")
 
   (let [obj (j/assoc-in! nil [:x :y]
-              (fn [x]
-                (this-as this
-                  [x                                        ;; variables are passed in
-                   (fn? (j/get this :y))])))]               ;; `this` is set to parent
+                         (fn [x]
+                           (this-as this
+                             [x ;; variables are passed in
+                              (fn? (j/get this :y))])))] ;; `this` is set to parent
 
 
     (is (= (j/call-in obj [:x :y] 10)
@@ -584,7 +584,7 @@
              [1 2])))
 
     (testing "js-literal behaviour"
-      (let [o #js {:yyyyyy  10
+      (let [o #js {:yyyyyy 10
                    "zzzzzz" 20}]
         (is (= (j/get o .-yyyyyy) (if advanced? nil 10)))
         (is (= (j/get o :yyyyyy) 10))
@@ -663,7 +663,7 @@
                 {:x [1 2 3 4]})
           "unquote-splice nested in an object"))
 
-    (is (clj= (j/lit [1 2 ~@ #js[5 6]])
+    (is (clj= (j/lit [1 2 ~@#js[5 6]])
               (j/lit [1 2 ~@(array 5 6)])
               [1 2 5 6])
         "unquote-splice with arrays")
@@ -677,8 +677,13 @@
 
     (is (= [:record-field nil]
            (j/let [^js {as-sym 'record-field
-                         as-key :record-field} (Hello. :record-field)]
+                        as-key :record-field} (Hello. :record-field)]
              [as-sym as-key])))
+
+    (is (= [1 2]
+           (j/let [{one :record-field} (Hello. 1)
+                   {two :record-field} (Hello. 2)]
+             [one two])))
 
     (is (= 10
            (j/let [^js {{{[_ _ n] :z} :y} :x} (j/lit {:x {:y {:z [0 5 10]}}})]
@@ -758,53 +763,53 @@
           "Getter functions"))))
 
 (comment
-  (let [arr (rand-nth [#js[1 2 3 4]])]
-    (simple-benchmark []
-                      (j/let [^js [n1 n2 n3 n4] arr] (+ n1 n2 n3 n4))
-                      10000)
-    (simple-benchmark []
-                      (let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4))
-                      10000)
-    ;;    [], (j/let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4)), 10000 runs, 1 msecs
-    ;;    [], (let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4)), 10000 runs, 6 msecs
-    ))
+ (let [arr (rand-nth [#js[1 2 3 4]])]
+   (simple-benchmark []
+                     (j/let [^js [n1 n2 n3 n4] arr] (+ n1 n2 n3 n4))
+                     10000)
+   (simple-benchmark []
+                     (let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4))
+                     10000)
+   ;;    [], (j/let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4)), 10000 runs, 1 msecs
+   ;;    [], (let [[n1 n2 n3 n4] arr] (+ n1 n2 n3 n4)), 10000 runs, 6 msecs
+   ))
 
 (comment
-  ;; `case` is the ~same speed as looking up a key in an object
-  (let [obj #js{:abc 10 :def 20 :ghi 30 :jkl 40 :mno 50}]
-    (simple-benchmark [x (rand-nth [:abc :def :ghi :jkl :mno])]
-                      (j/!get obj x)
+ ;; `case` is the ~same speed as looking up a key in an object
+ (let [obj #js{:abc 10 :def 20 :ghi 30 :jkl 40 :mno 50}]
+   (simple-benchmark [x (rand-nth [:abc :def :ghi :jkl :mno])]
+                     (j/!get obj x)
+                     100000)
+   (simple-benchmark [x (rand-nth [:abc :def :ghi :jkl :mno])]
+                     (case x
+                       :abc 10
+                       :def 20
+                       :ghi 30
+                       :jkl 40
+                       :mno 50)
+                     100000)
+   ;[x (rand-nth [:abc :def :ghi :jkl :mno])], (j/!get obj x), 100000 runs, 11 msecs
+   ;[x (rand-nth [:abc :def :ghi :jkl :mno])], (case x :abc 10 :def 20 :ghi 30 :jkl 40 :mno 50), 100000 runs, 11 msecs
+
+   ))
+
+(comment
+
+ (def get-thing (fn [] (rand-nth [{} #js{}])))
+ ((fn [f]
+    (simple-benchmark [thing (f)]
+                      (map? thing)
                       100000)
-    (simple-benchmark [x (rand-nth [:abc :def :ghi :jkl :mno])]
-                      (case x
-                        :abc 10
-                        :def 20
-                        :ghi 30
-                        :jkl 40
-                        :mno 50)
-                      100000)
-    ;[x (rand-nth [:abc :def :ghi :jkl :mno])], (j/!get obj x), 100000 runs, 11 msecs
-    ;[x (rand-nth [:abc :def :ghi :jkl :mno])], (case x :abc 10 :def 20 :ghi 30 :jkl 40 :mno 50), 100000 runs, 11 msecs
+    (simple-benchmark [thing (f)]
+                      (object? thing)
+                      100000)) get-thing)
+ ;[x (rand-nth [:abc :def :ghi :jkl :mno])], (j/!get obj x), 100000 runs, 11 msecs
+ ;[x (rand-nth [:abc :def :ghi :jkl :mno])], (case x :abc 10 :def 20 :ghi 30 :jkl 40 :mno 50), 100000 runs, 11 msecs
 
-    ))
+ )
 
 (comment
-
-  (def get-thing (fn [] (rand-nth [{} #js{}])))
-  ((fn [f]
-     (simple-benchmark [thing (f)]
-                       (map? thing)
-                       100000)
-     (simple-benchmark [thing (f)]
-                       (object? thing)
-                       100000)) get-thing)
-  ;[x (rand-nth [:abc :def :ghi :jkl :mno])], (j/!get obj x), 100000 runs, 11 msecs
-  ;[x (rand-nth [:abc :def :ghi :jkl :mno])], (case x :abc 10 :def 20 :ghi 30 :jkl 40 :mno 50), 100000 runs, 11 msecs
-
-  )
-
-(comment
-  (defn ro [] (when ([true false] 1) #js{}))
-  (j/infer-tags (ro))
-  (j/let [^js [n1 n2 & n3] nil] [n1 n2 n3])
-  (macroexpand '(j/let [^js[a] (take 1 (repeat "a"))])))
+ (defn ro [] (when ([true false] 1) #js{}))
+ (j/infer-tags (ro))
+ (j/let [^js [n1 n2 & n3] nil] [n1 n2 n3])
+ (macroexpand '(j/let [^js [a] (take 1 (repeat "a"))])))
