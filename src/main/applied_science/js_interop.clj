@@ -369,10 +369,13 @@
   ([x]
    (lit* nil x))
   ([{:as opts
-     :keys [keyfn valfn env]
+     :keys [keyfn valfn env deep?]
      :or {keyfn identity
           valfn litval*}} x]
-   (cond (map? x)
+   (cond (and deep?
+              (list? x)
+              (not (= 'clj (:tag (meta x))))) (map (partial lit* opts) x)
+         (map? x)
          (list* 'applied-science.js-interop/obj
                 (reduce-kv #(conj %1 (keyfn %2) (lit* opts %3)) [] x))
          (vector? x)
@@ -393,9 +396,9 @@
                       (if (and env (inf/tag-in? env '#{array} x'))
                         `(.forEach ~x' (c/fn [x#] (.push ~sym x#)))
                         `(doseq [x# ~(lit* x')] (.push ~sym x#)))
-                      `(.push ~sym ~@(map lit* x'))))
+                      `(.push ~sym ~@(map (partial lit* opts) x'))))
                 ~sym))
-           (list* 'cljs.core/array (mapv lit* x)))
+           (list* 'cljs.core/array (mapv (partial lit* opts) x)))
          :else (valfn x))))
 
 (c/defn clj-lit
@@ -426,6 +429,9 @@
   (if (:ns &env)
     (lit* {:env &env} form)
     (clj-lit form)))
+
+(defmacro lit∞ [form]
+  (lit* {:env &env :deep? true} form))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -462,6 +468,8 @@
     (cons 'clojure.core/defn (d/destructure-fn-args args))
     `(c/defn ~@args)))
 
+(defmacro log [& args]
+  `(~'js/console.log ~@(map (fn [x] (cond-> x (keyword? x) str)) args)))
 
 (comment
  ;; clj examples - default clojure behaviour
