@@ -44,145 +44,145 @@
   and array access to `aget`."
   [bindings]
   ;; modified from cljs.core/destructure
-  (c/let [bents (partition 2 bindings)
-          js? (or *js?* (js-tag? (meta bindings)))
-          pb (c/fn pb [bvec b v]
-               (let [b-meta (meta b)
-                     _ (assert (not (:js/shallow b-meta)) "Deprecated :js/shallow meta, use ^clj instead")
-                     js? (boolean (cond (clj-tag? b-meta) false
-                                        (js-tag? b-meta) true
-                                        js? true
-                                        :else false))]
-                 (binding [*js?* js?]
-                   (c/let [pvec
-                           (c/fn [bvec b v]
-                             (c/let [gvec (gensym "vec__")
-                                     gvec? (gensym "some_vec__")
-                                     gseq (gensym "seq__")
-                                     gfirst (gensym "first__")
-                                     has-rest (some #{'&} b)
-                                     clj-rest? (and has-rest (not js?))
-                                     get-nth (fn [n]
-                                               (if js?
-                                                 `(when ~gvec? (aget ~gvec ~n))
-                                                 `(nth ~gvec ~n nil)))
-                                     get-rest (fn [n]
-                                                (if js?
-                                                  `(some->
-                                                    ~(with-meta gvec {:tag 'array})
-                                                    (.slice ~n))
-                                                  gseq))]
-                               (c/loop [ret (c/let [ret (cond-> (conj bvec gvec v)
-                                                                js? (conj gvec? `(some? ~gvec)))]
-                                              (if clj-rest?
-                                                (conj ret gseq (c/list `seq gvec))
-                                                ret))
-                                        n 0
-                                        bs b
-                                        seen-rest? false]
-                                 (if (seq bs)
-                                   (c/let [firstb (first bs)]
-                                     (c/cond
-                                       (= firstb '&) (recur (pb ret (second bs) (get-rest n))
-                                                            n
-                                                            (nnext bs)
-                                                            true)
-                                       (= firstb :as) (pb ret (second bs) gvec)
-                                       :else (if seen-rest?
-                                               (throw #?(:clj  (new Exception "Unsupported binding form, only :as can follow & parameter")
-                                                         :cljs (new js/Error "Unsupported binding form, only :as can follow & parameter")))
-                                               (recur (pb (if clj-rest?
-                                                            (conj ret
-                                                                  gfirst `(first ~gseq)
-                                                                  gseq `(next ~gseq))
-                                                            ret)
-                                                          firstb
-                                                          (if clj-rest?
-                                                            gfirst
-                                                            (get-nth n)))
-                                                      (c/inc n)
-                                                      (next bs)
-                                                      seen-rest?))))
-                                   ret))))
-                           pmap
-                           (c/fn [bvec b v]
-                             (c/let [gmap (gensym "map__")
-                                     defaults (:or b)]
-                               (c/loop [ret (c/-> bvec (conj gmap) (conj v)
-                                                  (conj gmap) (conj `(if (~'cljs.core/implements? c/ISeq ~gmap) (apply cljs.core/hash-map ~gmap) ~gmap))
-                                                  ((c/fn [ret]
-                                                     (if (:as b)
-                                                       (conj ret (:as b) gmap)
-                                                       ret))))
-                                        bes (c/let [transforms
-                                                    (reduce
-                                                     (c/fn [transforms mk]
-                                                       (if (c/keyword? mk)
-                                                         (c/let [mkns (namespace mk)
-                                                                 mkn (name mk)]
-                                                           (c/cond (= mkn "keys") (assoc transforms mk #(keyword (c/or mkns (namespace %)) (name %)))
-                                                                   (= mkn "syms") (assoc transforms mk #(c/list `quote (symbol (c/or mkns (namespace %)) (name %))))
-                                                                   (= mkn "strs") (assoc transforms mk c/str)
-                                                                   :else transforms))
-                                                         transforms))
-                                                     {}
-                                                     (keys b))]
-                                              (reduce
-                                               (c/fn [bes entry]
-                                                 (reduce #(assoc %1 %2 ((val entry) %2))
-                                                         (dissoc bes (key entry))
-                                                         ((key entry) bes)))
-                                               (dissoc b :as :or)
-                                               transforms))]
-                                 (if (seq bes)
-                                   (c/let [bb (key (first bes))
-                                           bk (val (first bes))
+  (binding [*js?* (or *js?* (js-tag? (meta bindings)))]
+    (c/let [bents (partition 2 bindings)
+            pb (c/fn pb [bvec b v]
+                 (let [b-meta (meta b)
+                       _ (assert (not (:js/shallow b-meta)) "Deprecated :js/shallow meta, use ^clj instead")
+                       js? (boolean (cond (clj-tag? b-meta) false
+                                          (js-tag? b-meta) true
+                                          *js?* true
+                                          :else false))]
+                   (binding [*js?* js?]
+                     (c/let [pvec
+                             (c/fn [bvec b v]
+                               (c/let [gvec (gensym "vec__")
+                                       gvec? (gensym "some_vec__")
+                                       gseq (gensym "seq__")
+                                       gfirst (gensym "first__")
+                                       has-rest (some #{'&} b)
+                                       clj-rest? (and has-rest (not js?))
+                                       get-nth (fn [n]
+                                                 (if js?
+                                                   `(when ~gvec? (aget ~gvec ~n))
+                                                   `(nth ~gvec ~n nil)))
+                                       get-rest (fn [n]
+                                                  (if js?
+                                                    `(some->
+                                                      ~(with-meta gvec {:tag 'array})
+                                                      (.slice ~n))
+                                                    gseq))]
+                                 (c/loop [ret (c/let [ret (cond-> (conj bvec gvec v)
+                                                                  js? (conj gvec? `(some? ~gvec)))]
+                                                (if clj-rest?
+                                                  (conj ret gseq (c/list `seq gvec))
+                                                  ret))
+                                          n 0
+                                          bs b
+                                          seen-rest? false]
+                                   (if (seq bs)
+                                     (c/let [firstb (first bs)]
+                                       (c/cond
+                                         (= firstb '&) (recur (pb ret (second bs) (get-rest n))
+                                                              n
+                                                              (nnext bs)
+                                                              true)
+                                         (= firstb :as) (pb ret (second bs) gvec)
+                                         :else (if seen-rest?
+                                                 (throw #?(:clj  (new Exception "Unsupported binding form, only :as can follow & parameter")
+                                                           :cljs (new js/Error "Unsupported binding form, only :as can follow & parameter")))
+                                                 (recur (pb (if clj-rest?
+                                                              (conj ret
+                                                                    gfirst `(first ~gseq)
+                                                                    gseq `(next ~gseq))
+                                                              ret)
+                                                            firstb
+                                                            (if clj-rest?
+                                                              gfirst
+                                                              (get-nth n)))
+                                                        (c/inc n)
+                                                        (next bs)
+                                                        seen-rest?))))
+                                     ret))))
+                             pmap
+                             (c/fn [bvec b v]
+                               (c/let [gmap (gensym "map__")
+                                       defaults (:or b)]
+                                 (c/loop [ret (c/-> bvec (conj gmap) (conj v)
+                                                    (conj gmap) (conj `(if (~'cljs.core/implements? c/ISeq ~gmap) (apply cljs.core/hash-map ~gmap) ~gmap))
+                                                    ((c/fn [ret]
+                                                       (if (:as b)
+                                                         (conj ret (:as b) gmap)
+                                                         ret))))
+                                          bes (c/let [transforms
+                                                      (reduce
+                                                       (c/fn [transforms mk]
+                                                         (if (c/keyword? mk)
+                                                           (c/let [mkns (namespace mk)
+                                                                   mkn (name mk)]
+                                                             (c/cond (= mkn "keys") (assoc transforms mk #(keyword (c/or mkns (namespace %)) (name %)))
+                                                                     (= mkn "syms") (assoc transforms mk #(c/list `quote (symbol (c/or mkns (namespace %)) (name %))))
+                                                                     (= mkn "strs") (assoc transforms mk c/str)
+                                                                     :else transforms))
+                                                           transforms))
+                                                       {}
+                                                       (keys b))]
+                                                (reduce
+                                                 (c/fn [bes entry]
+                                                   (reduce #(assoc %1 %2 ((val entry) %2))
+                                                           (dissoc bes (key entry))
+                                                           ((key entry) bes)))
+                                                 (dissoc b :as :or)
+                                                 transforms))]
+                                   (if (seq bes)
+                                     (c/let [bb (key (first bes))
+                                             bk (val (first bes))
 
-                                           ;; convert renamable keys to .-dotFormat
-                                           bk (let [k (dequote bk)]
-                                                (if (and js? (symbol? k))
-                                                  (dot-access k)
-                                                  bk))
-                                           ;; use js-interop for ^js-tagged bindings & other renamable keys
-                                           getf (if js?
-                                                  'applied-science.js-interop/get
-                                                  'cljs.core/get)
+                                             ;; convert renamable keys to .-dotFormat
+                                             bk (let [k (dequote bk)]
+                                                  (if (and js? (symbol? k))
+                                                    (dot-access k)
+                                                    bk))
+                                             ;; use js-interop for ^js-tagged bindings & other renamable keys
+                                             getf (if js?
+                                                    'applied-science.js-interop/get
+                                                    'cljs.core/get)
 
-                                           local (if #?(:clj  (c/instance? clojure.lang.Named bb)
-                                                        :cljs (cljs.core/implements? INamed bb))
-                                                   (with-meta (symbol nil (name bb)) (meta bb))
-                                                   bb)
-                                           bv (if (contains? defaults local)
-                                                (c/list getf gmap bk (defaults local))
-                                                (c/list getf gmap bk))]
-                                     (recur
-                                      (if (c/or (c/keyword? bb) (c/symbol? bb)) ;(ident? bb)
-                                        (c/-> ret (conj local bv))
-                                        (pb ret bb bv))
-                                      (next bes)))
-                                   ret))))]
-                     (c/cond
-                       (c/symbol? b) (c/-> bvec (conj (if (namespace b) (symbol (name b)) b)) (conj v))
-                       (c/keyword? b) (c/-> bvec (conj (symbol (name b))) (conj v))
-                       (vector? b) (pvec bvec b v)
-                       (map? b) (pmap bvec b v)
-                       :else (throw
-                              #?(:clj  (new Exception (c/str "Unsupported binding form: " b))
-                                 :cljs (new js/Error (c/str "Unsupported binding form: " b)))))))))
-          process-entry (c/fn [bvec b] (pb bvec (first b) (second b)))]
-    (->> (if (every? c/symbol? (map first bents))
-           bindings
-           (c/if-let [kwbs (seq (filter #(c/keyword? (first %)) bents))]
-             (throw
-              #?(:clj  (new Exception (c/str "Unsupported binding key: " (ffirst kwbs)))
-                 :cljs (new js/Error (c/str "Unsupported binding key: " (ffirst kwbs)))))
-             (reduce process-entry [] bents)))
-         (partition 2)
-         (mapcat (if js?
-                   (fn [[k v]]
-                     [(maybe-tag-js k) v])
-                   identity))
-         vec)))
+                                             local (if #?(:clj  (c/instance? clojure.lang.Named bb)
+                                                          :cljs (cljs.core/implements? INamed bb))
+                                                     (with-meta (symbol nil (name bb)) (meta bb))
+                                                     bb)
+                                             bv (if (contains? defaults local)
+                                                  (c/list getf gmap bk (defaults local))
+                                                  (c/list getf gmap bk))]
+                                       (recur
+                                        (if (c/or (c/keyword? bb) (c/symbol? bb)) ;(ident? bb)
+                                          (c/-> ret (conj local bv))
+                                          (pb ret bb bv))
+                                        (next bes)))
+                                     ret))))]
+                       (c/cond
+                         (c/symbol? b) (c/-> bvec (conj (if (namespace b) (symbol (name b)) b)) (conj v))
+                         (c/keyword? b) (c/-> bvec (conj (symbol (name b))) (conj v))
+                         (vector? b) (pvec bvec b v)
+                         (map? b) (pmap bvec b v)
+                         :else (throw
+                                #?(:clj  (new Exception (c/str "Unsupported binding form: " b))
+                                   :cljs (new js/Error (c/str "Unsupported binding form: " b)))))))))
+            process-entry (c/fn [bvec b] (pb bvec (first b) (second b)))]
+      (->> (if (every? c/symbol? (map first bents))
+             bindings
+             (c/if-let [kwbs (seq (filter #(c/keyword? (first %)) bents))]
+               (throw
+                #?(:clj  (new Exception (c/str "Unsupported binding key: " (ffirst kwbs)))
+                   :cljs (new js/Error (c/str "Unsupported binding key: " (ffirst kwbs)))))
+               (reduce process-entry [] bents)))
+           (partition 2)
+           (mapcat (if *js?*
+                     (fn [[k v]]
+                       [(maybe-tag-js k) v])
+                     identity))
+           vec))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
