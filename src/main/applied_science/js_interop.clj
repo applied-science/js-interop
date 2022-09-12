@@ -4,6 +4,7 @@
                             let fn defn spread])
   (:require [clojure.core :as c]
             [cljs.compiler :as comp]
+            [cljs.analyzer :as ana]
             [clojure.string :as str]
             [applied-science.js-interop.destructure :as d]
             [applied-science.js-interop.inference :as inf]))
@@ -323,21 +324,40 @@
 
 (defn- literal-obj
   [keyvals]
-  (c/let [keyvals-str (str "({" (->> (map (c/fn [[k _]]
+  (c/let [;; support for multiple keys binding to the same value, eg {[:a :b] :C}
+          ;; (js objects would normally 'stringify' the vector)
+          [lets keyvals] (reduce (c/fn [[lets keyvals] [k v]]
+                                   (if (vector? k)
+                                     (c/let [sym (gensym)]
+                                       [(conj lets sym v)
+                                        (reduce (c/fn [keyvals k] (assoc keyvals k sym)) keyvals k)])
+                                     [lets (assoc keyvals k v)]))
+                                 [[] {}]
+                                 keyvals)
+          keyvals-str (str "({" (->> (map (c/fn [[k _]]
                                             (str (if (dot-sym? k)
-                                                   (comp/munge (dot-name k)) ;; without quotes, can be renamed by compiler
-                                                   (str \" (name k) \"))
+                                                   ;; renamable key
+                                                   (comp/munge (dot-name k))
+                                                   ;; static key
+                                                   (str \"
+                                                        ;; escape forward slashes (otherwise we generate invalid js)
+                                                        (str/escape (name k) {\\ "\\\\"})
+                                                        \"))
                                                  ":~{}")) keyvals)
-                                     (str/join ",")) "})")]
-    (vary-meta (list* 'js* keyvals-str (map second keyvals))
-               assoc :tag 'object)))
+                                     (str/join ",")) "})")
+          obj (vary-meta (list* 'js* keyvals-str (map second keyvals))
+                         assoc :tag 'object)]
+    (if (seq lets)
+      `(c/let ~lets ~obj)
+      obj)))
 
 (defmacro obj
   [& keyvals]
   (c/let [kvs (partition 2 keyvals)]
     (if (every? #(or (keyword? %)
                      (string? %)
-                     (dot-sym? %)) (map first kvs))
+                     (dot-sym? %)
+                     (vector? %)) (map first kvs))
       (literal-obj kvs)
       `(-> ~empty-obj
            ~@(for [[k v] kvs]
@@ -362,6 +382,39 @@
              (= 'clojure.core/unquote-splicing (first x)))
     (second x)))
 
+(c/defn apply-to-bodies
+  "For recursive lit*, ignores known clj syntax"
+  [f expr]
+  (c/let [op (first expr)
+          ;; default to js let, fn, defn
+          op (cond-> op (symbol? op) ana/resolve-symbol)
+          op ('{clojure.core/let applied-science.js-interop/js-let
+                cljs.core/let applied-science.js-interop/js-let
+                clojure.core/fn applied-science.js-interop/js-fn
+                cljs.core/fn applied-science.js-interop/js-fn
+                clojure.core/defn applied-science.js-interop/js-defn
+                cljs.core/defn applied-science.js-interop/js-defn} op op)
+          op-name (if (symbol? op)
+                    (name op)
+                    "")]
+    (cond (re-find #"\blet$" op-name) (c/let [bindings (->> (second expr)
+                                                            (partition 2)
+                                                            (mapcat
+                                                             (c/fn [[k v]] [k (f v)]))
+                                                            vec)]
+                                        (concat [op]
+                                                [bindings]
+                                                (map f (drop 2 expr))))
+          (re-find #"\b(defn|fn\*?)$" op-name) (c/let [[pre post] (split-with #(or (symbol? %)
+                                                                                   (string? %)
+                                                                                   (map? %)) expr)
+                                                       handle-fn-body #(cons (d/js-tag-all (first %)) (map f (rest %)))
+                                                       post (if (vector? (first post))
+                                                              (handle-fn-body post)
+                                                              (map handle-fn-body post))]
+                                                 (concat pre post))
+          :else (map f expr))))
+
 (c/defn lit*
   "Recursively converts literal Clojure maps/vectors into JavaScript object/array expressions
 
@@ -372,34 +425,34 @@
      :keys [keyfn valfn env deep?]
      :or {keyfn identity
           valfn litval*}} x]
-   (cond (and deep?
-              (list? x)
-              (not (= 'clj (:tag (meta x))))) (map (partial lit* opts) x)
-         (map? x)
-         (list* 'applied-science.js-interop/obj
-                (reduce-kv #(conj %1 (keyfn %2) (lit* opts %3)) [] x))
-         (vector? x)
-         (if (some spread x)
-           (c/let [sym (tagged-sym 'js/Array)]
-             `(c/let [~sym (~'cljs.core/array)]
-                ;; handling the spread operator
-                ~@(for [x'
-                        ;; chunk array members into spreads & non-spreads,
-                        ;; so that sequential non-spreads can be lumped into
-                        ;; a single .push
-                        (->> (partition-by spread x)
-                             (mapcat (clojure.core/fn [x]
-                                       (if (spread (first x))
-                                         x
-                                         (list x)))))]
-                    (if-let [x' (spread x')]
-                      (if (and env (inf/tag-in? env '#{array} x'))
-                        `(.forEach ~x' (c/fn [x#] (.push ~sym x#)))
-                        `(doseq [x# ~(lit* x')] (.push ~sym x#)))
-                      `(.push ~sym ~@(map (partial lit* opts) x'))))
-                ~sym))
-           (list* 'cljs.core/array (mapv (partial lit* opts) x)))
-         :else (valfn x))))
+   (if (and (coll? x) (d/clj-tag? (meta x)))
+     x
+     (cond (and deep? (list? x)) (apply-to-bodies (partial lit* opts) x)
+           (map? x)
+           (list* 'applied-science.js-interop/obj
+                  (reduce-kv #(conj %1 (keyfn %2) (lit* opts %3)) [] x))
+           (vector? x)
+           (if (some spread x)
+             (c/let [sym (tagged-sym 'js/Array)]
+               `(c/let [~sym (~'cljs.core/array)]
+                  ;; handling the spread operator
+                  ~@(for [x'
+                          ;; chunk array members into spreads & non-spreads,
+                          ;; so that sequential non-spreads can be lumped into
+                          ;; a single .push
+                          (->> (partition-by spread x)
+                               (mapcat (clojure.core/fn [x]
+                                         (if (spread (first x))
+                                           x
+                                           (list x)))))]
+                      (if-let [x' (spread x')]
+                        (if (and env (inf/tag-in? env '#{array} x'))
+                          `(.forEach ~x' (c/fn [x#] (.push ~sym x#)))
+                          `(doseq [x# ~(lit* x')] (.push ~sym x#)))
+                        `(.push ~sym ~@(map (partial lit* opts) x'))))
+                  ~sym))
+             (list* 'cljs.core/array (mapv (partial lit* opts) x)))
+           :else (valfn x)))))
 
 (c/defn clj-lit
   "lit for Clojure target, only handles ~@unquote-splicing"
@@ -430,8 +483,10 @@
     (lit* {:env &env} form)
     (clj-lit form)))
 
-(defmacro lit∞ [form]
-  (lit* {:env &env :deep? true} form))
+(defmacro js [& forms]
+  (binding [d/*js?* true]
+    (macroexpand
+     (list* 'do (map (partial lit* {:env &env :deep? true}) forms)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -443,12 +498,7 @@
 
    (let [^:js {:keys [a]} obj] …)"
   [bindings & body]
-  (if (:ns &env)
-    `(~'clojure.core/let ~(into []
-                                (mapcat d/destructure)
-                                (partition 2 bindings))
-      ~@body)
-    `(c/let ~bindings ~@body)))
+  `(c/let ~(cond-> bindings (:ns &env) d/destructure) ~@body))
 
 (defmacro fn
   "`fn` with argument destructuring that supports js property and array access.
@@ -468,8 +518,25 @@
     (cons 'clojure.core/defn (d/destructure-fn-args args))
     `(c/defn ~@args)))
 
-(defmacro log [& args]
+;; variants of let, fn, defn which destructure as js by default
+(defmacro js-let [bindings & body]
+  `(~'applied-science.js-interop/let ~(vary-meta bindings assoc :tag 'js) ~@body))
+(defmacro js-fn [& args]
+  (binding [d/*js?* true]
+    (cons 'clojure.core/fn (d/destructure-fn-args args))))
+(defmacro js-defn [& args]
+  (binding [d/*js?* true]
+    (cons 'clojure.core/defn (d/destructure-fn-args args))))
+
+
+(defmacro log
+  "Console log, prints keywords nicely."
+  [& args]
   `(~'js/console.log ~@(map (fn [x] (cond-> x (keyword? x) str)) args)))
+
+(comment
+ (defmacro expand [expr]
+   `'~(macroexpand expr)))
 
 (comment
  ;; clj examples - default clojure behaviour
