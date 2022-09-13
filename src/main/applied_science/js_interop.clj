@@ -342,10 +342,7 @@
                                                    ;; renamable key
                                                    (comp/munge (dot-name k))
                                                    ;; static key
-                                                   (str \"
-                                                        ;; escape forward slashes (otherwise we generate invalid js)
-                                                        (str/escape (name k) {\\ "\\\\"})
-                                                        \"))
+                                                   (str \" (name k) \"))
                                                  ":~{}")) keyvals)
                                      (str/join ",")) "})")
           obj (vary-meta (list* 'js* keyvals-str (map second keyvals))
@@ -358,6 +355,7 @@
   [& keyvals]
   (c/let [kvs (partition 2 keyvals)]
     (if (every? #(or (keyword? %)
+                     (char? %)
                      (string? %)
                      (dot-sym? %)
                      (vector? %)) (map first kvs))
