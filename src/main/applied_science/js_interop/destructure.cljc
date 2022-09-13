@@ -226,18 +226,15 @@
   [[params body]]
   (if (every? symbol? params)
     [params body]
-    (loop [params params
-           new-params (with-meta [] (meta params))
-           lets []]
-      (if params
-        (if (symbol? (first params))
-          (recur (next params) (conj new-params (first params)) lets)
-          (c/let [gparam (gensym "p__")]
-            (recur (next params) (conj new-params gparam)
-                   (conj lets (first params) gparam))))
-        [new-params
-         `[(~'applied-science.js-interop/let ~lets
-            ~@body)]]))))
+    (let [syms (into []
+                     (take (count params))
+                     (repeatedly gensym))
+          bindings (-> (interleave params syms)
+                       vec
+                       (with-meta (meta params))
+                       destructure)]
+      [syms
+       `[(~'applied-science.js-interop/let ~bindings ~@body)]])))
 
 (c/defn destructure-fn-args [args]
   (spec-reform ::function-args args #(update-argv+body maybe-destructured %)))

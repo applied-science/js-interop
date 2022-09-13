@@ -292,12 +292,15 @@
 ;;
 ;; Function operations
 
-(defmacro call [obj k & args]
-  (if (dot-sym? k)
-    `(~(dot-call k) ~obj ~@args)
-    `(~*let [obj# ~obj
-             ^function f# (!get obj# ~k)]
-      (.call f# obj# ~@args))))
+(defmacro call
+  ([k]
+   `(c/fn [o#] (~'applied-science.js-interop/call o# ~k)))
+  ([obj k & args]
+   (if (dot-sym? k)
+     `(~(dot-call k) ~obj ~@args)
+     `(~*let [obj# ~obj
+              ^function f# (!get obj# ~k)]
+       (.call f# obj# ~@args)))))
 
 (defmacro call-in [obj ks & args]
   (if (vector? ks)
@@ -387,32 +390,36 @@
   [f expr]
   (c/let [op (first expr)
           ;; default to js let, fn, defn
-          op (cond-> op (symbol? op) ana/resolve-symbol)
           op ('{clojure.core/let applied-science.js-interop/js-let
                 cljs.core/let applied-science.js-interop/js-let
                 clojure.core/fn applied-science.js-interop/js-fn
                 cljs.core/fn applied-science.js-interop/js-fn
                 clojure.core/defn applied-science.js-interop/js-defn
-                cljs.core/defn applied-science.js-interop/js-defn} op op)
+                clojure.core/defn- applied-science.js-interop/js-defn
+                cljs.core/defn applied-science.js-interop/js-defn
+                cljs.core/defn- applied-science.js-interop/js-defn} (cond-> op (symbol? op) ana/resolve-symbol) op)
           op-name (if (symbol? op)
                     (name op)
                     "")]
-    (cond (re-find #"\blet$" op-name) (c/let [bindings (->> (second expr)
-                                                            (partition 2)
-                                                            (mapcat
-                                                             (c/fn [[k v]] [k (f v)]))
-                                                            vec)]
-                                        (concat [op]
-                                                [bindings]
-                                                (map f (drop 2 expr))))
-          (re-find #"\b(defn|fn\*?)$" op-name) (c/let [[pre post] (split-with #(or (symbol? %)
-                                                                                   (string? %)
-                                                                                   (map? %)) expr)
-                                                       handle-fn-body #(cons (d/js-tag-all (first %)) (map f (rest %)))
-                                                       post (if (vector? (first post))
-                                                              (handle-fn-body post)
-                                                              (map handle-fn-body post))]
-                                                 (concat pre post))
+    (cond (re-find #"\b(let|loop)$" op-name)
+          (c/let [bindings (->> (second expr)
+                                (partition 2)
+                                (mapcat
+                                 (c/fn [[k v]] [k (f v)]))
+                                vec)]
+            `(~op ~bindings ~@(map f (drop 2 expr))))
+
+          (re-find #"\b(defn\-?|fn\*?)$" op-name)
+          (c/let [expr (cons op (rest expr))
+                  [pre post] (split-with #(or (symbol? %)
+                                              (string? %)
+                                              (map? %)) expr)
+                  handle-fn-body #(cons (d/js-tag-all (first %)) (map f (rest %)))
+                  post (if (vector? (first post))
+                         (handle-fn-body post)
+                         (map handle-fn-body post))]
+            (concat pre post))
+
           :else (map f expr))))
 
 (c/defn lit*
@@ -523,10 +530,10 @@
   `(~'applied-science.js-interop/let ~(vary-meta bindings assoc :tag 'js) ~@body))
 (defmacro js-fn [& args]
   (binding [d/*js?* true]
-    (cons 'clojure.core/fn (d/destructure-fn-args args))))
+    `(~'clojure.core/fn ~@(d/destructure-fn-args args))))
 (defmacro js-defn [& args]
   (binding [d/*js?* true]
-    (cons 'clojure.core/defn (d/destructure-fn-args args))))
+    `(~'clojure.core/defn ~@(d/destructure-fn-args args))))
 
 
 (defmacro log
@@ -534,9 +541,9 @@
   [& args]
   `(~'js/console.log ~@(map (fn [x] (cond-> x (keyword? x) str)) args)))
 
-(comment
- (defmacro expand [expr]
-   `'~(macroexpand expr)))
+
+(defmacro expand [expr]
+  `'~(macroexpand expr))
 
 (comment
  ;; clj examples - default clojure behaviour
