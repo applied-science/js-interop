@@ -388,6 +388,7 @@
   [f expr]
   (c/let [op (first expr)
           ;; default to js let, fn, defn
+          qop (cond-> op (symbol? op) ana/resolve-symbol)
           op ('{clojure.core/let applied-science.js-interop/js-let
                 cljs.core/let applied-science.js-interop/js-let
                 clojure.core/fn applied-science.js-interop/js-fn
@@ -395,7 +396,7 @@
                 clojure.core/defn applied-science.js-interop/js-defn
                 clojure.core/defn- applied-science.js-interop/js-defn
                 cljs.core/defn applied-science.js-interop/js-defn
-                cljs.core/defn- applied-science.js-interop/js-defn} (cond-> op (symbol? op) ana/resolve-symbol) op)
+                cljs.core/defn- applied-science.js-interop/js-defn} qop op)
           op-name (if (symbol? op)
                     (name op)
                     "")]
@@ -417,6 +418,10 @@
                          (handle-fn-body post)
                          (map handle-fn-body post))]
             (concat pre post))
+
+          (#{'applied-science.js-interop/log
+             'applied-science.js-interop/logret} qop)
+          `(~op ~@(map (c/fn [x] (cond-> x (not (keyword? x)) f)) (rest expr)))
 
           :else (map f expr))))
 
@@ -533,11 +538,22 @@
   (binding [d/*js?* true]
     `(~'clojure.core/defn ~@(d/destructure-fn-args args))))
 
+(defn- str-kw [k] (cond-> k (keyword? k) str))
 
 (defmacro log
-  "Console log, prints keywords nicely."
+  "js/console.log with nice keyword printing (shallow)"
   [& args]
-  `(~'js/console.log ~@(map (fn [x] (cond-> x (keyword? x) str)) args)))
+  `(~'js/console.log ~@(map str-kw args)))
+
+(defmacro logret
+  "like j/log but, returns the last argument"
+  [& args]
+  (let [syms (take (dec (count args)) (repeatedly gensym))
+        bindings (interleave syms (map str-kw (butlast args)))]
+    `(let [~@bindings
+           result# ~(last args)]
+       (~'js/console.log ~@syms result#)
+       result#)))
 
 
 (defmacro expand [expr]
