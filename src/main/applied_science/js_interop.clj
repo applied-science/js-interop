@@ -270,6 +270,9 @@
       `(~'applied-science.js-interop.impl/update-in* ~obj ~(wrap-keys ks) ~f ~(vec args)))
     `(c/update-in ~obj ~ks ~f ~@args)))
 
+(defmacro delete! [obj k]
+  `(doto ~obj (~'js-delete ~(wrap-key &env obj k))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Array operations
