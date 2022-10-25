@@ -109,7 +109,7 @@
                                (c/let [gmap (gensym "map__")
                                        defaults (:or b)]
                                  (c/loop [ret (c/-> bvec (conj gmap) (conj v)
-                                                    (conj gmap) (conj `(if (~'cljs.core/implements? c/ISeq ~gmap) (apply cljs.core/hash-map ~gmap) ~gmap))
+                                                    (conj gmap) (conj `(if (seq? ~gmap) (apply cljs.core/hash-map ~gmap) ~gmap))
                                                     ((c/fn [ret]
                                                        (if (:as b)
                                                          (conj ret (:as b) gmap)

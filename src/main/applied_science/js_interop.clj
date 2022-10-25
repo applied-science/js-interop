@@ -548,6 +548,10 @@
   [& args]
   `(~'js/console.log ~@(map str-kw args)))
 
+(defmacro log-named
+  [& args]
+  `(log (j/obj ~@(mapcat (fn [a] [(keyword (str a)) a]) args))))
+
 (defmacro logret
   "like j/log but, returns the last argument"
   [& args]
