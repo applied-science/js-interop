@@ -185,6 +185,26 @@
   ([obj x & more]
    (reduce merge! (merge! obj x) more)))
 
+(defn update-keys! [obj f]
+  "Updates the keys of `obj` by applying `f` to each key. Returns `obj`.
+  ```
+  (j/update-keys! o (partial str \"prefix-\"))
+  ```"
+  (when obj
+    (doseq [k (js/Object.keys obj)
+            :let [v (core/unchecked-get obj k)]]
+      (js-delete obj k)
+      (core/unchecked-set obj (f k) v))
+    obj))
+
+(defn update-vals! [obj f]
+  "Updates the values of `obj` by applying `f` to each value, iterating using js/Object.entries. Returns `obj`."
+  (when obj
+    (doseq [entry (js/Object.entries obj)]
+      (j/let [^js [k v] entry]
+        (core/unchecked-set obj k (f v))))
+    obj))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Array operations

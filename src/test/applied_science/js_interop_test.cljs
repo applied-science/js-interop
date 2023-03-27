@@ -6,6 +6,7 @@
                                         deftest]]
             [applied-science.js-interop.inference :as inf]
             [clojure.pprint :refer [pprint]]
+            [clojure.string :as str]
             [goog.object :as gobj]
             [goog.reflect :as reflect]))
 
@@ -761,6 +762,16 @@
                     (j/get "ccccc")
                     (j/get-in [:ddddd .-eeeee])) obj))
           "Getter functions"))))
+
+(deftest update-obj
+  (testing "update-keys"
+    (let [obj (j/obj :a 1 :b 2)]
+      (is (clj= (j/update-keys! obj str/upper-case)
+                {:A 1 :B 2}))))
+  (testing "update-vals"
+    (let [obj (j/obj :a 1 :b 2)]
+      (is (clj= (j/update-vals! obj inc)
+                {:a 2 :b 3})))))
 
 (comment
  (let [arr (rand-nth [#js[1 2 3 4]])]
