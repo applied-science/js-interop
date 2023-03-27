@@ -424,7 +424,7 @@
             (concat pre post))
 
           (#{'applied-science.js-interop/log
-             'applied-science.js-interop/logret} qop)
+             'applied-science.js-interop/dolog} qop)
           `(~op ~@(map (c/fn [x] (cond-> x (not (keyword? x)) f)) (rest expr)))
 
           :else (map f expr))))
@@ -544,24 +544,9 @@
 (defn- str-kw [k] (cond-> k (keyword? k) str))
 
 (defmacro log
-  "js/console.log with nice keyword printing (shallow)"
+  "js/console.log"
   [& args]
-  `(~'js/console.log ~@(map str-kw args)))
-
-(defmacro log-named
-  [& args]
-  `(log (j/obj ~@(mapcat (fn [a] [(keyword (str a)) a]) args))))
-
-(defmacro logret
-  "like j/log but, returns the last argument"
-  [& args]
-  (let [syms (take (dec (count args)) (repeatedly gensym))
-        bindings (interleave syms (map str-kw (butlast args)))]
-    `(let [~@bindings
-           result# ~(last args)]
-       (~'js/console.log ~@syms result#)
-       result#)))
-
+  `(~'js/console.log ~@args))
 
 (defmacro expand [expr]
   `'~(macroexpand expr))
