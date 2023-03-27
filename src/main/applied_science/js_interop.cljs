@@ -159,7 +159,7 @@
   [obj ks f & args]
   (impl/update-in* obj (mapv impl/wrap-key ks) f args))
 
-(defn extend!
+(defn merge!
   "Extends `obj` with the properties of one or more objects, overwriting
    existing properties, moving left to right. Returns `obj`.
    An empty starting object is provided if `obj` is nil.
@@ -176,7 +176,14 @@
          (unchecked-set obj k (unchecked-get x k))))
      obj))
   ([obj x & more]
-   (reduce extend! (extend! obj x) more)))
+   (reduce merge! (merge! obj x) more)))
+
+(defn extend!
+  "alias for merge!"
+  ([obj] obj)
+  ([obj x] (merge! obj x))
+  ([obj x & more]
+   (reduce merge! (merge! obj x) more)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

@@ -18,16 +18,19 @@
 
 (def ^:dynamic *js?* false)
 
-(defn maybe-tag-js [sym]
+(defn tag-js [sym]
   (c/let [m (meta sym)]
     (cond-> sym
             (and (not (:clj m))
                  (not (:tag m)))
             (vary-meta assoc :tag 'js))))
 
+(defn maybe-tag-js [x]
+  (cond-> x *js?* tag-js))
+
 (defn js-tag-all [expr]
   (walk/postwalk (c/fn [param]
-                   (cond-> param (symbol? param) maybe-tag-js))
+                   (cond-> param (symbol? param) tag-js))
                  expr))
 
 (defn js-tag? [m] (or (:js m) (= 'js (:tag m))))
@@ -87,7 +90,7 @@
                                                               n
                                                               (nnext bs)
                                                               true)
-                                         (= firstb :as) (pb ret (second bs) gvec)
+                                         (= firstb :as) (pb ret (maybe-tag-js (second bs)) gvec)
                                          :else (if seen-rest?
                                                  (throw #?(:clj  (new Exception "Unsupported binding form, only :as can follow & parameter")
                                                            :cljs (new js/Error "Unsupported binding form, only :as can follow & parameter")))
@@ -96,7 +99,7 @@
                                                                     gfirst `(first ~gseq)
                                                                     gseq `(next ~gseq))
                                                               ret)
-                                                            firstb
+                                                            (maybe-tag-js firstb)
                                                             (if clj-rest?
                                                               gfirst
                                                               (get-nth n)))
@@ -112,7 +115,7 @@
                                                     (conj gmap) (conj `(if (seq? ~gmap) (apply cljs.core/hash-map ~gmap) ~gmap))
                                                     ((c/fn [ret]
                                                        (if (:as b)
-                                                         (conj ret (:as b) gmap)
+                                                         (conj ret (maybe-tag-js (:as b)) gmap)
                                                          ret))))
                                           bes (c/let [transforms
                                                       (reduce
@@ -148,10 +151,11 @@
                                                     'applied-science.js-interop/get
                                                     'cljs.core/get)
 
-                                             local (if #?(:clj  (c/instance? clojure.lang.Named bb)
-                                                          :cljs (cljs.core/implements? INamed bb))
-                                                     (with-meta (symbol nil (name bb)) (meta bb))
-                                                     bb)
+                                             local (maybe-tag-js
+                                                    (if #?(:clj  (c/instance? clojure.lang.Named bb)
+                                                           :cljs (cljs.core/implements? INamed bb))
+                                                      (with-meta (symbol nil (name bb)) (meta bb))
+                                                      bb))
                                              bv (if (contains? defaults local)
                                                   (c/list getf gmap bk (defaults local))
                                                   (c/list getf gmap bk))]
@@ -180,7 +184,7 @@
            (partition 2)
            (mapcat (if *js?*
                      (fn [[k v]]
-                       [(maybe-tag-js k) v])
+                       [(tag-js k) v])
                      identity))
            vec))))
 
@@ -224,17 +228,15 @@
 
 (c/defn- maybe-destructured
   [[params body]]
-  (if (every? symbol? params)
-    [params body]
-    (let [syms (into []
-                     (take (count params))
-                     (repeatedly gensym))
-          bindings (-> (interleave params syms)
-                       vec
-                       (with-meta (meta params))
-                       destructure)]
-      [syms
-       `[(~'applied-science.js-interop/let ~bindings ~@body)]])))
+  (let [syms (into []
+                   (take (count params))
+                   (repeatedly gensym))
+        bindings (-> (interleave params syms)
+                     vec
+                     (with-meta (meta params))
+                     destructure)]
+    [syms
+     `[(~'applied-science.js-interop/let ~bindings ~@body)]]))
 
 (c/defn destructure-fn-args [args]
   (spec-reform ::function-args args #(update-argv+body maybe-destructured %)))

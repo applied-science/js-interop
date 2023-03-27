@@ -392,7 +392,8 @@
   (c/let [op (first expr)
           ;; default to js let, fn, defn
           qop (cond-> op (symbol? op) ana/resolve-symbol)
-          op ('{clojure.core/let applied-science.js-interop/js-let
+          op ('{clojure.core/when-let applied-science.js-interop/js-when-let
+                clojure.core/let applied-science.js-interop/js-let
                 cljs.core/let applied-science.js-interop/js-let
                 clojure.core/fn applied-science.js-interop/js-fn
                 cljs.core/fn applied-science.js-interop/js-fn
@@ -496,11 +497,6 @@
     (lit* {:env &env} form)
     (clj-lit form)))
 
-(defmacro js [& forms]
-  (binding [d/*js?* true]
-    (macroexpand
-     (list* 'do (map (partial lit* {:env &env :deep? true}) forms)))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Destructured forms
@@ -532,6 +528,10 @@
     `(c/defn ~@args)))
 
 ;; variants of let, fn, defn which destructure as js by default
+(defmacro js-when-let [bindings & body]
+  `(c/when-let [result# ~(second bindings)]
+     (~'applied-science.js-interop/let [~(first bindings) result#]
+      ~@body)))
 (defmacro js-let [bindings & body]
   `(~'applied-science.js-interop/let ~(vary-meta bindings assoc :tag 'js) ~@body))
 (defmacro js-fn [& args]

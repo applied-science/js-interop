@@ -119,6 +119,20 @@
      (wrap "getters-2"
            (j/get :abracabra))
 
+     (wrap "deftype with fields"
+           (do
+             (deftype MyType [^:mutable currentThing]
+               IDeref
+               (-deref [o] currentThing)
+               IReset
+               (-reset! [o new-val] (set! (.-currentThing ^js o) new-val)))
+
+             (let [my-instance (MyType. "the Thing")]
+               @my-instance)
+             )
+
+           )
+
 
      (goog-define debug false)
      ;; sanity-check: both of the following are DCE'd, the ^boolean hint is unnecessary
