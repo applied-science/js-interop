@@ -182,7 +182,7 @@
                    :cljs (new js/Error (c/str "Unsupported binding key: " (ffirst kwbs)))))
                (reduce process-entry [] bents)))
            (partition 2)
-           (mapcat (if *js?*
+           (mapcat (if *js?* #_true  ;; always tag these syms?
                      (fn [[k v]]
                        [(tag-js k) v])
                      identity))

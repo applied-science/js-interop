@@ -7,5 +7,4 @@
 
 (defmacro js [& forms]
   (binding [d/*js?* true]
-    (macroexpand
-     (list* 'do (map (partial j/lit* {:env &env :deep? true}) forms)))))
+    `(do ~@(map (partial j/lit* {:env &env :deep? true}) forms))))

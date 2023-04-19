@@ -1,5 +1,6 @@
 (ns applied-science.js-interop-test
   (:require [applied-science.js-interop :as j]
+            [applied-science.js-interop.alpha :refer [js]]
             [cljs.test :as test :refer [is
                                         are
                                         testing
@@ -772,6 +773,36 @@
     (let [obj (j/obj :a 1 :b 2)]
       (is (clj= (j/update-vals! obj inc)
                 {:a 2 :b 3})))))
+
+
+(deftest conditionals
+  (testing "if-let"
+    (let [obj (j/obj :a 1)]
+      (is (= 1
+             (j/if-let [^js {:keys [a]} obj]
+               a
+               2)))
+      (is (= 1
+             (j/when-let [^js {:keys [a]} obj]
+               a)))
+      (is (= 2
+             (j/if-let [^js {:keys [a]} nil]
+               a
+               2)))
+      (is (nil?
+           (j/when-let [^js {:keys [a]} nil]
+             a))))))
+
+(deftest js-mode
+  (let [obj (j/lit {:a {:b {:c 10}}})]
+    (js
+      (is (= 10
+             (j/get-in {:a {:b {:c 10}}} [:a :b :c])
+             (j/get-in obj [:a :b :c])))
+      (is (= 10
+             ((fn [{{{c :c} :b} :a}] c) obj)
+             (j/get-in obj [:a :b :c]))))))
+
 
 (comment
  (let [arr (rand-nth [#js[1 2 3 4]])]

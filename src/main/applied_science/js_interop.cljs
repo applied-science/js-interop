@@ -215,9 +215,11 @@
   ```
   (j/push! arr 10)
   ```"
-  [^js array x]
-  (doto array
-    (.push x)))
+  ([] #js[])
+  ([array] array)
+  ([^js array x]
+   (doto array
+     (.push x))))
 
 (defn unshift!
   "Prepends `v` to `a` and returns the mutated array.
