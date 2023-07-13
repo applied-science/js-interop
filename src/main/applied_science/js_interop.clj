@@ -406,7 +406,9 @@
           ;; default to js let, fn, defn
           qop (cond-> op (symbol? op) ana/resolve-symbol)
           op ('{clojure.core/if-let applied-science.js-interop/js-if-let
+                clojure.core/if-some applied-science.js-interop/js-if-some
                 clojure.core/when-let applied-science.js-interop/js-when-let
+                clojure.core/when-some applied-science.js-interop/js-when-some
                 clojure.core/let applied-science.js-interop/js-let
                 cljs.core/let applied-science.js-interop/js-let
                 clojure.core/fn applied-science.js-interop/js-fn
@@ -418,7 +420,8 @@
           op-name (if (symbol? op)
                     (name op)
                     "")]
-    (cond (re-find #"\b(let|loop)$" op-name)
+    (cond (and (re-find #"\b(let|loop|some)$" op-name)
+               (vector? (second expr)))
           (c/let [bindings (->> (second expr)
                                 (partition 2)
                                 (mapcat
@@ -480,6 +483,7 @@
                         `(.push ~sym ~@(map (partial lit* opts) x'))))
                   ~sym))
              (list* 'cljs.core/array (mapv (partial lit* opts) x)))
+           (keyword? x) x
            :else (valfn x)))))
 
 (c/defn clj-lit
@@ -557,7 +561,9 @@
 (defmacro js-let [bindings & body]
   `(~'applied-science.js-interop/let ~(tag-js bindings) ~@body))
 (defmacro js-if-let [bindings & args] `(if-let ~(tag-js bindings) ~@args))
+(defmacro js-if-some [bindings & args] `(if-some ~(tag-js bindings) ~@args))
 (defmacro js-when-let [bindings & body] `(if-let ~(tag-js bindings) (do ~@body)))
+(defmacro js-when-some [bindings & body] `(when-some ~(tag-js bindings) (do ~@body)))
 (defmacro js-fn [& args]
   (binding [d/*js?* true]
     `(~'clojure.core/fn ~@(d/destructure-fn-args args))))
