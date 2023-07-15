@@ -242,8 +242,12 @@
   (j/call o :someFunction arg1 arg2)
   (j/call o .-someFunction arg1 arg2)
   ```"
-  [obj k & args]
-  (.apply (j/get obj k) obj (to-array args)))
+  ([k] (fn
+         ([obj] (.call (j/get obj k) obj))
+         ([obj & args]
+          (.apply (j/get obj k) obj (to-array args)))))
+  ([obj k & args]
+   (.apply (j/get obj k) obj (to-array args))))
 
 (defn apply
   "Apply function `k` of `obj`, binding `this` to `obj`.
