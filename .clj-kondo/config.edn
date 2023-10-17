@@ -1,0 +1,5 @@
+{:lint-as {applied-science.js-interop/fn clojure.core/fn
+           applied-science.js-interop/defn clojure.core/defn
+           applied-science.js-interop/let clojure.core/let
+           applied-science.js-interop/if-let clojure.core/if-let
+           applied-science.js-interop/when-let clojure.core/when-let}}
